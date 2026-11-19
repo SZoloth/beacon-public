@@ -1,0 +1,147 @@
+name: Beacon
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "18.0"
+    macOS: "15.0"
+  xcodeVersion: "26.0"
+
+settings:
+  base:
+    # Swift 5 mode, like Beacon Triage: LinkPresentation types aren't Sendable yet.
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: YOUR_TEAM_ID
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+# The one app for Library, Today and Briefs. It borrows Beacon Triage's data code
+# (../Sources/BeaconTriage) until that app is retired.
+targets:
+  BeaconMac:
+    type: application
+    platform: macOS
+    sources:
+      - Sources
+      - Shared
+      - ../ios/Sources/BeaconHTTP.swift
+      - path: ../Sources/BeaconTriage
+        excludes:
+          - BeaconTriageApp.swift
+    info:
+      path: build/Info-mac.plist
+      properties:
+        CFBundleDisplayName: Beacon
+        CFBundleName: Beacon
+        LSApplicationCategoryType: public.app-category.productivity
+        CFBundleURLTypes:
+          - CFBundleURLName: com.example.beacon
+            CFBundleURLSchemes: [beacon]
+    dependencies:
+      - target: BeaconWidgetsMac
+    settings:
+      base:
+        PRODUCT_NAME: Beacon
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.beacon
+        # Runs beacon.py with Process, so no sandbox; ad hoc signing like Beacon Triage.
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_HARDENED_RUNTIME: NO
+
+  BeaconPhone2:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+      - Shared
+      - ../ios/Sources/BeaconHTTP.swift
+      # Settings › Beacon: where the phone's access key is pasted.
+      - path: ../ios/Settings.bundle
+        buildPhase: resources
+      - path: ../Sources/BeaconTriage
+        excludes:
+          - BeaconTriageApp.swift
+          - BeaconCLI.swift
+    info:
+      path: build/Info-ios.plist
+      properties:
+        CFBundleDisplayName: Beacon ✦
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        CFBundleURLTypes:
+          - CFBundleURLName: com.example.beacon
+            CFBundleURLSchemes: [beacon]
+        NSAppTransportSecurity:
+          NSExceptionDomains:
+            ts.net:
+              NSIncludesSubdomains: true
+              NSExceptionAllowsInsecureHTTPLoads: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.beacon-one
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1"
+    entitlements:
+      path: build/BeaconPhone.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.example.beacon]
+    dependencies:
+      - target: BeaconWidgetsPhone
+
+  BeaconWidgetsMac:
+    type: app-extension
+    platform: macOS
+    sources:
+      - Widgets
+      - Shared
+      - Sources/Theme.swift
+      - Sources/Thumbnails.swift
+      - ../Sources/BeaconTriage/Model.swift
+    info:
+      path: build/Info-widgets-mac.plist
+      properties:
+        CFBundleDisplayName: Beacon Widgets
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    entitlements:
+      path: build/BeaconWidgetsMac.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.beacon.widgets
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) BEACON_WIDGET"
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_HARDENED_RUNTIME: NO
+        SKIP_INSTALL: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+
+  BeaconWidgetsPhone:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Widgets
+      - Shared
+      - Sources/Theme.swift
+      - ../Sources/BeaconTriage/Model.swift
+    info:
+      path: build/Info-widgets-ios.plist
+      properties:
+        CFBundleDisplayName: Beacon Widgets
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: build/BeaconWidgetsPhone.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.example.beacon]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.beacon-one.widgets
+        CODE_SIGN_STYLE: Automatic
+        SKIP_INSTALL: YES
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""

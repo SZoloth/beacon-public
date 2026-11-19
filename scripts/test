@@ -1,0 +1,6 @@
+#!/bin/sh
+# Run Beacon's Python tests with one process per test module, several at a time.
+# Same tests as `python -m unittest discover -s tests`, in a fraction of the time.
+# Usage: scripts/test [-j JOBS] [module ...]   e.g. scripts/test test_activate test_pick
+cd "$(dirname "$0")/.." || exit 1
+exec "$(dirname "$0")/python" -B scripts/run_tests.py "$@"

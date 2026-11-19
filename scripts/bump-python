@@ -1,0 +1,38 @@
+#!/bin/zsh
+# Move Beacon's pinned Python (scripts/python) to the newest 3.14 patch, gated on the tests.
+# Runs monthly from the com.example.beacon-python-bump launchd job; safe to run by hand.
+# Old patch folders stay installed, so servers still running on them keep working.
+set -eu
+
+LINK="$HOME/.local/share/beacon/python"
+REPO="${0:A:h:h}"
+LOG="$HOME/Library/Logs/beacon-python-bump.log"
+export PATH="/opt/homebrew/bin:$HOME/.local/bin:/usr/bin:/bin"
+
+say() { print -r -- "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG"; print -r -- "$*"; }
+notify() { osascript -e "display notification \"$1\" with title \"Beacon Python\"" >/dev/null 2>&1 || true; }
+
+if ! uv python install 3.14 >/dev/null 2>&1; then
+  say "uv could not install the newest 3.14; staying on ${LINK:A:t}"
+  exit 1
+fi
+newest="$(uv python find --managed-python 3.14)"
+newest="${newest:A:h:h}"
+current="${LINK:A}"
+
+if [[ "$newest" == "$current" ]]; then
+  say "current: ${current:t}"
+  exit 0
+fi
+
+if ! output="$(cd "$REPO" && "$newest/bin/python3.14" -m unittest discover -s tests 2>&1)"; then
+  say "tests FAILED on ${newest:t}; staying on ${current:t}"
+  print -r -- "${output}" | tail -40 >> "$LOG"
+  notify "Tests failed on ${newest:t}. Beacon stays on ${current:t}. See beacon-python-bump.log."
+  exit 1
+fi
+
+ln -sfn "$newest" "$LINK"
+launchctl kickstart -k "gui/$(id -u)/com.example.beacon-serve" || true
+say "moved ${current:t} -> ${newest:t}"
+notify "Beacon moved to ${newest:t} after its tests passed."

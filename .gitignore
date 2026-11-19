@@ -1,0 +1,20 @@
+beacon.db
+beacon.db.*
+beacon.db-shm
+beacon.db-wal
+beacon.db-*
+__pycache__/
+*.pyc
+backups/
+logs/
+handoffs/
+app/ios/build/
+app/ios/*.xcodeproj/
+app/one/build/
+tools/beacon-embed/.build/
+media/
+.eval/
+
+# Per-session agent state
+.claude/memory/
+.claude/worktrees/

@@ -1,0 +1,82 @@
+{
+  "owner": {
+    "name": "Alex",
+    "about": "The user is Alex, who builds software and reads about design and engineering."
+  },
+  "paths": {
+    "live_db": "~/beacon/beacon.db",
+    "reading_inbox": "~/beacon/reading-inbox.md"
+  },
+  "workstreams": [
+    {
+      "slug": "my-app",
+      "name": "My app",
+      "backlog_path": "~/code/my-app/docs/beacon-backlog.md",
+      "description": "Replace with one or two sentences: what the project is, and what kind of save would help it (libraries, design references, techniques)."
+    },
+    {
+      "slug": "writing",
+      "name": "Writing",
+      "backlog_path": "~/notes/writing/beacon-backlog.md",
+      "description": "Essays and posts in progress. Helped by writing craft, examples of strong arguments, and sources on the topics being written about."
+    }
+  ],
+  "sources": {
+    "github": {
+      "method": "gh_api"
+    },
+    "readwise": {
+      "method": "reader_api",
+      "category": "tweet",
+      "default_count": 200,
+      "handoff_dir": "handoffs/readwise"
+    }
+  },
+  "practices": [],
+  "classification": {
+    "model": "sonnet",
+    "batch_size": 15
+  },
+  "areas": [
+    {
+      "slug": "style",
+      "name": "Style",
+      "description": "Clothes, shoes, accessories, grooming and personal style references."
+    },
+    {
+      "slug": "home",
+      "name": "Home",
+      "description": "Interiors, furniture, objects, organizing and home projects."
+    },
+    {
+      "slug": "food",
+      "name": "Food",
+      "description": "Recipes, cooking techniques, restaurants, coffee and drinks."
+    },
+    {
+      "slug": "travel",
+      "name": "Travel",
+      "description": "Places to go, trips, hotels, neighborhoods and travel tips."
+    },
+    {
+      "slug": "reading",
+      "name": "Reading",
+      "description": "Books, essays and long reads to read for their own sake, not for a work project."
+    },
+    {
+      "slug": "ideas",
+      "name": "Ideas",
+      "description": "Interesting ideas, mental models, life advice and inspiration not tied to a current project."
+    },
+    {
+      "slug": "activities",
+      "name": "Activities & Dates",
+      "description": "Things to do, events, outings, experiences and date ideas with a partner or friends."
+    },
+    {
+      "slug": "websites",
+      "name": "Websites",
+      "description": "Well-designed websites, web design references and useful sites to bookmark."
+    }
+  ]
+}

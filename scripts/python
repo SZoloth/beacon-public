@@ -1,0 +1,6 @@
+#!/bin/sh
+# The one interpreter every long-running Beacon process uses (MCP servers, `beacon serve`).
+# The link points at a uv-managed Python pinned to an exact patch, so `brew upgrade` can
+# never delete it from under a running server. scripts/bump-python moves the link to a
+# newer patch once a month, but only after Beacon's tests pass on it.
+exec "$HOME/.local/share/beacon/python/bin/python3.14" "$@"

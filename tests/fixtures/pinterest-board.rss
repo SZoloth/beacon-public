@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Kitchen ideas</title>
+    <link>https://www.pinterest.com/testuser/kitchen-ideas/</link>
+    <description>Synthetic fixture for Beacon tests; not real Pinterest data.</description>
+    <item>
+      <title>Walnut open shelving</title>
+      <link>https://www.pinterest.com/pin/1111111111111111/</link>
+      <description><![CDATA[<a href="https://www.pinterest.com/pin/1111111111111111/"><img src="https://i.pinimg.com/236x/aa/bb/cc/aabbcc.jpg"></a>Warm walnut shelves &amp; brass brackets above a butcher-block counter.]]></description>
+      <pubDate>Sat, 04 Oct 2026 12:30:00 +0000</pubDate>
+      <guid>https://www.pinterest.com/pin/1111111111111111/</guid>
+    </item>
+    <item>
+      <title></title>
+      <link>https://www.pinterest.com/pin/2222222222222222/</link>
+      <description><![CDATA[<a href="https://www.pinterest.com/pin/2222222222222222/"><img src="https://i.pinimg.com/236x/dd/ee/ff/ddeeff.jpg"></a>]]></description>
+      <pubDate>Fri, 03 Oct 2026 08:00:00 -0600</pubDate>
+      <guid>https://www.pinterest.com/pin/2222222222222222/</guid>
+    </item>
+    <item>
+      <title>No image on this one</title>
+      <link>https://www.pinterest.com/pin/3333333333333333/</link>
+      <description><![CDATA[Text only description.]]></description>
+      <guid>https://www.pinterest.com/pin/3333333333333333/</guid>
+    </item>
+    <item>
+      <title>Missing link and guid</title>
+      <description><![CDATA[This item cannot be identified.]]></description>
+    </item>
+  </channel>
+</rss>

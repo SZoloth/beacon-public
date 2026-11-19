@@ -1,0 +1,821 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		04AC2A10020387821F3F4BCC /* Activity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E442AF806F53696D8182AF4 /* Activity.swift */; };
+		06F4AC244F51042AFEFB2D84 /* Bench.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE180A0C172F5903A0930289 /* Bench.swift */; };
+		0F895925D59C91FE344C27F4 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D278F2591146F00D66AA47F /* Model.swift */; };
+		159E08E9A796EB17B5894C62 /* Pick.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0573FDD90B94D98657513B /* Pick.swift */; };
+		18592DEB43C80F20C9CD1562 /* Settings.bundle in Resources */ = {isa = PBXBuildFile; fileRef = E71481F3543755C0D447F60B /* Settings.bundle */; };
+		1C0E5ADC06CA8ECA3838D172 /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95204C0D7A57AAC11617086B /* Platform.swift */; };
+		21AAE0F7E1815AC319018BBF /* TriageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B7DACB33A43F0DEA7A4AAD /* TriageStore.swift */; };
+		26A2704B1912B6C2EE6EF238 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC263BA6EE9C5B7B33FB99F6 /* WidgetSnapshot.swift */; };
+		2744A0EF5FB589199D639347 /* ReferenceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AD37795D5DB1F40E3753FE8 /* ReferenceSheet.swift */; };
+		275959227B5192AE1DDB3F07 /* Thumbnails.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDFEEECA9436D7B51E450662 /* Thumbnails.swift */; };
+		2D9A61512B03D06F78FA5A69 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D278F2591146F00D66AA47F /* Model.swift */; };
+		32578551AEEEE56B894E5A32 /* Activity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E442AF806F53696D8182AF4 /* Activity.swift */; };
+		35A7E85F7C15B30A494455F0 /* PickPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 356FBCBB42B3E1F15A5E5780 /* PickPage.swift */; };
+		35BAF82A72F9CFC618FA8090 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB35441006C1595573CADBCE /* LibraryView.swift */; };
+		38E1C0CD5F33271A61C5920F /* PostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19B1860C4C781EE7B0ECA842 /* PostView.swift */; };
+		3A9AD8F32E9205F6E2689D08 /* Thumbnails.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDFEEECA9436D7B51E450662 /* Thumbnails.swift */; };
+		44378B0DA303CBB54A2D45D4 /* BeaconHTTP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24B30E0A3878E488E27432C4 /* BeaconHTTP.swift */; };
+		4680AEFF1B9ED72CE902CCC3 /* TriageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B7DACB33A43F0DEA7A4AAD /* TriageStore.swift */; };
+		4A4CFFE2A01625C208FEAE6F /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A25474D6A863D05F81CABC5F /* Theme.swift */; };
+		4C272DA03D3B5102BE2C2E85 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC263BA6EE9C5B7B33FB99F6 /* WidgetSnapshot.swift */; };
+		53B8444137A7F35109102504 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8723F0AA84AFAAA409F5ECA5 /* TodayView.swift */; };
+		555DF74EC665F52DBCA4FEB0 /* BriefsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0599B08B17AC151B5C364DFA /* BriefsView.swift */; };
+		56E2872E88ACEE53606CCB25 /* BeaconCLI.swift in Sources */ = {isa = PBXBuildFile; fileRef = D090F6DE20DF17D7D30EFF3C /* BeaconCLI.swift */; };
+		5A866326140B09438A6CDD39 /* BeaconWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 829E929E9E5B47AF1D691072 /* BeaconWidgets.swift */; };
+		5EEEAF6BD48A348A48B38E01 /* TrayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61C91617F12826B34041FB00 /* TrayView.swift */; };
+		68C87A92D2FF0F56A66E53FA /* ReferenceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AD37795D5DB1F40E3753FE8 /* ReferenceSheet.swift */; };
+		6D0FF797B81D8C4B711236CA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 88A14B4FAF69CF33558C0667 /* Assets.xcassets */; };
+		6D33A375AA501DDC3306927C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 88A14B4FAF69CF33558C0667 /* Assets.xcassets */; };
+		6D9E7CD968CFBE52FA760223 /* BeaconHTTP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24B30E0A3878E488E27432C4 /* BeaconHTTP.swift */; };
+		6E749E10C18E9F1DF839EFC4 /* Thumbnails.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDFEEECA9436D7B51E450662 /* Thumbnails.swift */; };
+		71EE010BF617CF4AC0C7AD5E /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BB1580873CAFB37CC148504 /* ContentView.swift */; };
+		7A0AC810464B20459F553942 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A25474D6A863D05F81CABC5F /* Theme.swift */; };
+		7A87416BC1FB066D3FAB38B5 /* TrayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61C91617F12826B34041FB00 /* TrayView.swift */; };
+		7CED0134C6115C01A504D9B1 /* BriefsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0599B08B17AC151B5C364DFA /* BriefsView.swift */; };
+		7EA691A419B43D2BA2D3FDDE /* BeaconApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D43EAD380E8313ABA3F2089 /* BeaconApp.swift */; };
+		83545FABB9E84E88ABF358D9 /* WidgetPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E58ACBC4015154C31DAC313 /* WidgetPublisher.swift */; };
+		8AAE3501D436A87D50FEB146 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D278F2591146F00D66AA47F /* Model.swift */; };
+		8B30288D776BD4D7E1251AAF /* ActivityPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 470D278F40268370DF267604 /* ActivityPage.swift */; };
+		8EB6B3E0FB0975B95F56DF46 /* BeaconWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 829E929E9E5B47AF1D691072 /* BeaconWidgets.swift */; };
+		928CCB107278313B8A9ED84F /* WidgetPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E58ACBC4015154C31DAC313 /* WidgetPublisher.swift */; };
+		9343B98C18582E42E7FD0B40 /* PostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19B1860C4C781EE7B0ECA842 /* PostView.swift */; };
+		9844BFBA961A97B74E881111 /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEB74AE31AE9FB49160B3803 /* WidgetViews.swift */; };
+		9EE992FF0744F19B27BD4D08 /* BeaconApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D43EAD380E8313ABA3F2089 /* BeaconApp.swift */; };
+		A2B6FFC97EE368350A51D28D /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95204C0D7A57AAC11617086B /* Platform.swift */; };
+		A5DD9ED9BAB060FCAFA66E98 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D278F2591146F00D66AA47F /* Model.swift */; };
+		A798F57CCCA4ADC8604DD49E /* PickPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 356FBCBB42B3E1F15A5E5780 /* PickPage.swift */; };
+		AF35370AEA36481872D5302A /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC263BA6EE9C5B7B33FB99F6 /* WidgetSnapshot.swift */; };
+		B10965EAACA408D6C5D28F90 /* BeaconWidgetsMac.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5AEC090A2B0ED8BFD16E83E4 /* BeaconWidgetsMac.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B4F6AB32BB70DF54CC2F8943 /* Bench.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE180A0C172F5903A0930289 /* Bench.swift */; };
+		B920338CC1A0A48ABBA1E6D6 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A25474D6A863D05F81CABC5F /* Theme.swift */; };
+		BBB10B376CB6439AAD72307D /* BeaconWidgetsPhone.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5E8769DD9A9C10F761A47EFD /* BeaconWidgetsPhone.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		CAD4C7D72BDBCA62759A2776 /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEB74AE31AE9FB49160B3803 /* WidgetViews.swift */; };
+		D2B09F5A745F8D28CF3B46E7 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A25474D6A863D05F81CABC5F /* Theme.swift */; };
+		DC8EEBD143DC36D8F1BAB984 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BB1580873CAFB37CC148504 /* ContentView.swift */; };
+		DFEB3CE1C77674A5C0EE029A /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC263BA6EE9C5B7B33FB99F6 /* WidgetSnapshot.swift */; };
+		E4DA36895F0CD4E023D0ECB5 /* Pick.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0573FDD90B94D98657513B /* Pick.swift */; };
+		E9B69DDEA3D7AF1D6F6CA35B /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB35441006C1595573CADBCE /* LibraryView.swift */; };
+		E9C1D081F77C729BA80600EE /* ActivityPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 470D278F40268370DF267604 /* ActivityPage.swift */; };
+		F34AB4B7CA0D5476A0EE4AD3 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8723F0AA84AFAAA409F5ECA5 /* TodayView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		123B014A9965939FBED4D147 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C6CDC17607DFF5D714886E77 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FAEE778F067BF4D771434C8B;
+			remoteInfo = BeaconWidgetsPhone;
+		};
+		DB9EB54B4EAF2A90B92A94A4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C6CDC17607DFF5D714886E77 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BE235BDDB7567851C7635789;
+			remoteInfo = BeaconWidgetsMac;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		2821B7DC27AAA4D354DC0798 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B10965EAACA408D6C5D28F90 /* BeaconWidgetsMac.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D3B8E7945D856D4C52AC0E09 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BBB10B376CB6439AAD72307D /* BeaconWidgetsPhone.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		0599B08B17AC151B5C364DFA /* BriefsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BriefsView.swift; sourceTree = "<group>"; };
+		0BB1580873CAFB37CC148504 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		19B1860C4C781EE7B0ECA842 /* PostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostView.swift; sourceTree = "<group>"; };
+		1E442AF806F53696D8182AF4 /* Activity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Activity.swift; sourceTree = "<group>"; };
+		24B30E0A3878E488E27432C4 /* BeaconHTTP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeaconHTTP.swift; sourceTree = "<group>"; };
+		356FBCBB42B3E1F15A5E5780 /* PickPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickPage.swift; sourceTree = "<group>"; };
+		470D278F40268370DF267604 /* ActivityPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityPage.swift; sourceTree = "<group>"; };
+		5AEC090A2B0ED8BFD16E83E4 /* BeaconWidgetsMac.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BeaconWidgetsMac.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		5E58ACBC4015154C31DAC313 /* WidgetPublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetPublisher.swift; sourceTree = "<group>"; };
+		5E8769DD9A9C10F761A47EFD /* BeaconWidgetsPhone.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = BeaconWidgetsPhone.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		61C91617F12826B34041FB00 /* TrayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrayView.swift; sourceTree = "<group>"; };
+		6AD37795D5DB1F40E3753FE8 /* ReferenceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferenceSheet.swift; sourceTree = "<group>"; };
+		7E0573FDD90B94D98657513B /* Pick.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pick.swift; sourceTree = "<group>"; };
+		829E929E9E5B47AF1D691072 /* BeaconWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeaconWidgets.swift; sourceTree = "<group>"; };
+		8723F0AA84AFAAA409F5ECA5 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
+		87FA1EC07600DCCB0180D44F /* BeaconPhone2.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BeaconPhone2.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		880527582A8993BB88F33C39 /* BeaconMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BeaconMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		88A14B4FAF69CF33558C0667 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		95204C0D7A57AAC11617086B /* Platform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Platform.swift; sourceTree = "<group>"; };
+		95B7DACB33A43F0DEA7A4AAD /* TriageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TriageStore.swift; sourceTree = "<group>"; };
+		9D278F2591146F00D66AA47F /* Model.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model.swift; sourceTree = "<group>"; };
+		9D43EAD380E8313ABA3F2089 /* BeaconApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeaconApp.swift; sourceTree = "<group>"; };
+		A25474D6A863D05F81CABC5F /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		AE180A0C172F5903A0930289 /* Bench.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bench.swift; sourceTree = "<group>"; };
+		BC263BA6EE9C5B7B33FB99F6 /* WidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshot.swift; sourceTree = "<group>"; };
+		BEB74AE31AE9FB49160B3803 /* WidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetViews.swift; sourceTree = "<group>"; };
+		CB35441006C1595573CADBCE /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
+		CDFEEECA9436D7B51E450662 /* Thumbnails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Thumbnails.swift; sourceTree = "<group>"; };
+		D090F6DE20DF17D7D30EFF3C /* BeaconCLI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeaconCLI.swift; sourceTree = "<group>"; };
+		E71481F3543755C0D447F60B /* Settings.bundle */ = {isa = PBXFileReference; lastKnownFileType = wrapper.cfbundle; path = Settings.bundle; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		1168A4BC81DD0ED8F231522A /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				BC263BA6EE9C5B7B33FB99F6 /* WidgetSnapshot.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		3775047BE660E575CD18F67A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				880527582A8993BB88F33C39 /* BeaconMac.app */,
+				87FA1EC07600DCCB0180D44F /* BeaconPhone2.app */,
+				5AEC090A2B0ED8BFD16E83E4 /* BeaconWidgetsMac.appex */,
+				5E8769DD9A9C10F761A47EFD /* BeaconWidgetsPhone.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5A6FD8CFDDA4ED0CF21C250A /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				24B30E0A3878E488E27432C4 /* BeaconHTTP.swift */,
+			);
+			name = Sources;
+			path = ../ios/Sources;
+			sourceTree = "<group>";
+		};
+		64E8DAE41942259FA7506A72 /* ios */ = {
+			isa = PBXGroup;
+			children = (
+				E71481F3543755C0D447F60B /* Settings.bundle */,
+			);
+			name = ios;
+			path = ../ios;
+			sourceTree = "<group>";
+		};
+		7D305C7354F60FF4F0BA1A1C = {
+			isa = PBXGroup;
+			children = (
+				FF470927D0CBB3CE07B419FF /* BeaconTriage */,
+				64E8DAE41942259FA7506A72 /* ios */,
+				1168A4BC81DD0ED8F231522A /* Shared */,
+				9E683AE71CB931CFE0981F45 /* Sources */,
+				5A6FD8CFDDA4ED0CF21C250A /* Sources */,
+				DED28D1F125EC259A4E42AD8 /* Widgets */,
+				3775047BE660E575CD18F67A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		9E683AE71CB931CFE0981F45 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				470D278F40268370DF267604 /* ActivityPage.swift */,
+				88A14B4FAF69CF33558C0667 /* Assets.xcassets */,
+				9D43EAD380E8313ABA3F2089 /* BeaconApp.swift */,
+				AE180A0C172F5903A0930289 /* Bench.swift */,
+				CB35441006C1595573CADBCE /* LibraryView.swift */,
+				356FBCBB42B3E1F15A5E5780 /* PickPage.swift */,
+				6AD37795D5DB1F40E3753FE8 /* ReferenceSheet.swift */,
+				A25474D6A863D05F81CABC5F /* Theme.swift */,
+				CDFEEECA9436D7B51E450662 /* Thumbnails.swift */,
+				8723F0AA84AFAAA409F5ECA5 /* TodayView.swift */,
+				61C91617F12826B34041FB00 /* TrayView.swift */,
+				5E58ACBC4015154C31DAC313 /* WidgetPublisher.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		DED28D1F125EC259A4E42AD8 /* Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				829E929E9E5B47AF1D691072 /* BeaconWidgets.swift */,
+				BEB74AE31AE9FB49160B3803 /* WidgetViews.swift */,
+			);
+			path = Widgets;
+			sourceTree = "<group>";
+		};
+		FF470927D0CBB3CE07B419FF /* BeaconTriage */ = {
+			isa = PBXGroup;
+			children = (
+				1E442AF806F53696D8182AF4 /* Activity.swift */,
+				D090F6DE20DF17D7D30EFF3C /* BeaconCLI.swift */,
+				0599B08B17AC151B5C364DFA /* BriefsView.swift */,
+				0BB1580873CAFB37CC148504 /* ContentView.swift */,
+				9D278F2591146F00D66AA47F /* Model.swift */,
+				7E0573FDD90B94D98657513B /* Pick.swift */,
+				95204C0D7A57AAC11617086B /* Platform.swift */,
+				19B1860C4C781EE7B0ECA842 /* PostView.swift */,
+				95B7DACB33A43F0DEA7A4AAD /* TriageStore.swift */,
+			);
+			name = BeaconTriage;
+			path = ../Sources/BeaconTriage;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		22D8EF4F0C30F481675D65B8 /* BeaconMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FC6561D19700C0783C1D33D1 /* Build configuration list for PBXNativeTarget "BeaconMac" */;
+			buildPhases = (
+				91B77D29DC4DBF92414DE946 /* Sources */,
+				E02B6D39FE9AA781AA762D03 /* Resources */,
+				2821B7DC27AAA4D354DC0798 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7944186156060DA26D245001 /* PBXTargetDependency */,
+			);
+			name = BeaconMac;
+			packageProductDependencies = (
+			);
+			productName = BeaconMac;
+			productReference = 880527582A8993BB88F33C39 /* BeaconMac.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B911E077A1DE948ECAE9D77B /* BeaconPhone2 */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 94017272EDBC2EEAC02F0C4E /* Build configuration list for PBXNativeTarget "BeaconPhone2" */;
+			buildPhases = (
+				1417BF501922DDD83D41AAEF /* Sources */,
+				88EF04D5EA354D81CF70F750 /* Resources */,
+				D3B8E7945D856D4C52AC0E09 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				803F591E52240FE4F9735E36 /* PBXTargetDependency */,
+			);
+			name = BeaconPhone2;
+			packageProductDependencies = (
+			);
+			productName = BeaconPhone2;
+			productReference = 87FA1EC07600DCCB0180D44F /* BeaconPhone2.app */;
+			productType = "com.apple.product-type.application";
+		};
+		BE235BDDB7567851C7635789 /* BeaconWidgetsMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8A2A0132591D64804C7A14F8 /* Build configuration list for PBXNativeTarget "BeaconWidgetsMac" */;
+			buildPhases = (
+				B8AA1369211FA4B6D0DCA0CA /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BeaconWidgetsMac;
+			packageProductDependencies = (
+			);
+			productName = BeaconWidgetsMac;
+			productReference = 5AEC090A2B0ED8BFD16E83E4 /* BeaconWidgetsMac.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		FAEE778F067BF4D771434C8B /* BeaconWidgetsPhone */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C76BD1D9EE043A0BB37617F8 /* Build configuration list for PBXNativeTarget "BeaconWidgetsPhone" */;
+			buildPhases = (
+				45C0FFA4ECD515043C168388 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BeaconWidgetsPhone;
+			packageProductDependencies = (
+			);
+			productName = BeaconWidgetsPhone;
+			productReference = 5E8769DD9A9C10F761A47EFD /* BeaconWidgetsPhone.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C6CDC17607DFF5D714886E77 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					22D8EF4F0C30F481675D65B8 = {
+						DevelopmentTeam = YOUR_TEAM_ID;
+						ProvisioningStyle = Manual;
+					};
+					B911E077A1DE948ECAE9D77B = {
+						DevelopmentTeam = YOUR_TEAM_ID;
+						ProvisioningStyle = Automatic;
+					};
+					BE235BDDB7567851C7635789 = {
+						DevelopmentTeam = YOUR_TEAM_ID;
+						ProvisioningStyle = Manual;
+					};
+					FAEE778F067BF4D771434C8B = {
+						DevelopmentTeam = YOUR_TEAM_ID;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 880646F2C181B43B6D369452 /* Build configuration list for PBXProject "Beacon" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 7D305C7354F60FF4F0BA1A1C;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 3775047BE660E575CD18F67A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				22D8EF4F0C30F481675D65B8 /* BeaconMac */,
+				B911E077A1DE948ECAE9D77B /* BeaconPhone2 */,
+				BE235BDDB7567851C7635789 /* BeaconWidgetsMac */,
+				FAEE778F067BF4D771434C8B /* BeaconWidgetsPhone */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		88EF04D5EA354D81CF70F750 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6D33A375AA501DDC3306927C /* Assets.xcassets in Resources */,
+				18592DEB43C80F20C9CD1562 /* Settings.bundle in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E02B6D39FE9AA781AA762D03 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6D0FF797B81D8C4B711236CA /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1417BF501922DDD83D41AAEF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				32578551AEEEE56B894E5A32 /* Activity.swift in Sources */,
+				8B30288D776BD4D7E1251AAF /* ActivityPage.swift in Sources */,
+				7EA691A419B43D2BA2D3FDDE /* BeaconApp.swift in Sources */,
+				6D9E7CD968CFBE52FA760223 /* BeaconHTTP.swift in Sources */,
+				B4F6AB32BB70DF54CC2F8943 /* Bench.swift in Sources */,
+				555DF74EC665F52DBCA4FEB0 /* BriefsView.swift in Sources */,
+				71EE010BF617CF4AC0C7AD5E /* ContentView.swift in Sources */,
+				35BAF82A72F9CFC618FA8090 /* LibraryView.swift in Sources */,
+				A5DD9ED9BAB060FCAFA66E98 /* Model.swift in Sources */,
+				159E08E9A796EB17B5894C62 /* Pick.swift in Sources */,
+				A798F57CCCA4ADC8604DD49E /* PickPage.swift in Sources */,
+				1C0E5ADC06CA8ECA3838D172 /* Platform.swift in Sources */,
+				9343B98C18582E42E7FD0B40 /* PostView.swift in Sources */,
+				68C87A92D2FF0F56A66E53FA /* ReferenceSheet.swift in Sources */,
+				B920338CC1A0A48ABBA1E6D6 /* Theme.swift in Sources */,
+				275959227B5192AE1DDB3F07 /* Thumbnails.swift in Sources */,
+				F34AB4B7CA0D5476A0EE4AD3 /* TodayView.swift in Sources */,
+				5EEEAF6BD48A348A48B38E01 /* TrayView.swift in Sources */,
+				4680AEFF1B9ED72CE902CCC3 /* TriageStore.swift in Sources */,
+				83545FABB9E84E88ABF358D9 /* WidgetPublisher.swift in Sources */,
+				DFEB3CE1C77674A5C0EE029A /* WidgetSnapshot.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		45C0FFA4ECD515043C168388 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5A866326140B09438A6CDD39 /* BeaconWidgets.swift in Sources */,
+				2D9A61512B03D06F78FA5A69 /* Model.swift in Sources */,
+				4A4CFFE2A01625C208FEAE6F /* Theme.swift in Sources */,
+				26A2704B1912B6C2EE6EF238 /* WidgetSnapshot.swift in Sources */,
+				CAD4C7D72BDBCA62759A2776 /* WidgetViews.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		91B77D29DC4DBF92414DE946 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				04AC2A10020387821F3F4BCC /* Activity.swift in Sources */,
+				E9C1D081F77C729BA80600EE /* ActivityPage.swift in Sources */,
+				9EE992FF0744F19B27BD4D08 /* BeaconApp.swift in Sources */,
+				56E2872E88ACEE53606CCB25 /* BeaconCLI.swift in Sources */,
+				44378B0DA303CBB54A2D45D4 /* BeaconHTTP.swift in Sources */,
+				06F4AC244F51042AFEFB2D84 /* Bench.swift in Sources */,
+				7CED0134C6115C01A504D9B1 /* BriefsView.swift in Sources */,
+				DC8EEBD143DC36D8F1BAB984 /* ContentView.swift in Sources */,
+				E9B69DDEA3D7AF1D6F6CA35B /* LibraryView.swift in Sources */,
+				8AAE3501D436A87D50FEB146 /* Model.swift in Sources */,
+				E4DA36895F0CD4E023D0ECB5 /* Pick.swift in Sources */,
+				35A7E85F7C15B30A494455F0 /* PickPage.swift in Sources */,
+				A2B6FFC97EE368350A51D28D /* Platform.swift in Sources */,
+				38E1C0CD5F33271A61C5920F /* PostView.swift in Sources */,
+				2744A0EF5FB589199D639347 /* ReferenceSheet.swift in Sources */,
+				7A0AC810464B20459F553942 /* Theme.swift in Sources */,
+				6E749E10C18E9F1DF839EFC4 /* Thumbnails.swift in Sources */,
+				53B8444137A7F35109102504 /* TodayView.swift in Sources */,
+				7A87416BC1FB066D3FAB38B5 /* TrayView.swift in Sources */,
+				21AAE0F7E1815AC319018BBF /* TriageStore.swift in Sources */,
+				928CCB107278313B8A9ED84F /* WidgetPublisher.swift in Sources */,
+				4C272DA03D3B5102BE2C2E85 /* WidgetSnapshot.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B8AA1369211FA4B6D0DCA0CA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8EB6B3E0FB0975B95F56DF46 /* BeaconWidgets.swift in Sources */,
+				0F895925D59C91FE344C27F4 /* Model.swift in Sources */,
+				D2B09F5A745F8D28CF3B46E7 /* Theme.swift in Sources */,
+				3A9AD8F32E9205F6E2689D08 /* Thumbnails.swift in Sources */,
+				AF35370AEA36481872D5302A /* WidgetSnapshot.swift in Sources */,
+				9844BFBA961A97B74E881111 /* WidgetViews.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7944186156060DA26D245001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BE235BDDB7567851C7635789 /* BeaconWidgetsMac */;
+			targetProxy = DB9EB54B4EAF2A90B92A94A4 /* PBXContainerItemProxy */;
+		};
+		803F591E52240FE4F9735E36 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FAEE778F067BF4D771434C8B /* BeaconWidgetsPhone */;
+			targetProxy = 123B014A9965939FBED4D147 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		13C8E216DCB5EFBCE3EED279 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = build/BeaconWidgetsPhone.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = "build/Info-widgets-ios.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.beacon-one.widgets";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		6A5D098995793C998396921E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = build/BeaconWidgetsPhone.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = "build/Info-widgets-ios.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.beacon-one.widgets";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		6D8F03F8190EC22FF4D9A822 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = build/BeaconPhone.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = "build/Info-ios.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.beacon-one";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		906FB93D020DA73B1569F5AC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = build/BeaconWidgetsMac.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = NO;
+				INFOPLIST_FILE = "build/Info-widgets-mac.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.beacon.widgets;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) BEACON_WIDGET";
+			};
+			name = Release;
+		};
+		AFE7807B1615640FCC7860B0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = YOUR_TEAM_ID;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		D089BFB129EC4D90B13FBD70 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = NO;
+				INFOPLIST_FILE = "build/Info-mac.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.beacon;
+				PRODUCT_NAME = Beacon;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		E4435098B177C6B1A6F06201 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = build/BeaconWidgetsMac.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = NO;
+				INFOPLIST_FILE = "build/Info-widgets-mac.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.beacon.widgets;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) BEACON_WIDGET";
+			};
+			name = Debug;
+		};
+		E5817567C45C64BFB73AD6E5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = YOUR_TEAM_ID;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		F1C89BAD52BFDB36B17A6801 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = NO;
+				INFOPLIST_FILE = "build/Info-mac.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.beacon;
+				PRODUCT_NAME = Beacon;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		F39FF18EBE2BAA9F8C86F7BC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = build/BeaconPhone.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = "build/Info-ios.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.beacon-one";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		880646F2C181B43B6D369452 /* Build configuration list for PBXProject "Beacon" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E5817567C45C64BFB73AD6E5 /* Debug */,
+				AFE7807B1615640FCC7860B0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8A2A0132591D64804C7A14F8 /* Build configuration list for PBXNativeTarget "BeaconWidgetsMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E4435098B177C6B1A6F06201 /* Debug */,
+				906FB93D020DA73B1569F5AC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		94017272EDBC2EEAC02F0C4E /* Build configuration list for PBXNativeTarget "BeaconPhone2" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F39FF18EBE2BAA9F8C86F7BC /* Debug */,
+				6D8F03F8190EC22FF4D9A822 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C76BD1D9EE043A0BB37617F8 /* Build configuration list for PBXNativeTarget "BeaconWidgetsPhone" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				13C8E216DCB5EFBCE3EED279 /* Debug */,
+				6A5D098995793C998396921E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FC6561D19700C0783C1D33D1 /* Build configuration list for PBXNativeTarget "BeaconMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D089BFB129EC4D90B13FBD70 /* Debug */,
+				F1C89BAD52BFDB36B17A6801 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = C6CDC17607DFF5D714886E77 /* Project object */;
+}

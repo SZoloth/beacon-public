@@ -1,0 +1,325 @@
+{
+  "scope": "invented saved-resource meaning-search calibration; no personal library data",
+  "model": "jev-1.13.0",
+  "fixture_sha256": "4d53ec0cd89e0bfa64f94d1ab094ca52ed066091391f94981cfec8993f5cd384",
+  "raw_report_sha256": "d31f8210669bce5c5fcfc97c4acce1ed9a00965164c3d8e01946cbcbd7f81202",
+  "date": "2026-09-20",
+  "label_review": "Poolside Laguna reviewed invented examples without authored labels or Jev outcomes; parent agreed. Not human ground truth.",
+  "limitation": "Six authored cases, two designated calibration and four held out before this run. After inspection all are calibration. Forty item judgments do not establish representative library accuracy, end-to-end speedup or private-use acceptance.",
+  "attempted_calls": 7,
+  "usage": {
+    "input_tokens": 7564,
+    "output_tokens": 764
+  },
+  "estimated_cost_usd": 0.00031768800000000005,
+  "price_source": "https://docs.typesafe.ai/models",
+  "price_per_million_input_tokens": 0.042,
+  "summary": {
+    "eligible_items": 40,
+    "intended_matches": 5,
+    "returned_matches": 5,
+    "exclusions": 33,
+    "uncertain_decoys": 2,
+    "false_matches": 0,
+    "missed_intended_matches": 0,
+    "keyword_candidate_stage_recovered": 2,
+    "newly_recovered": 3
+  },
+  "cases": [
+    {
+      "id": "sqlite-synonym",
+      "split": "calibration",
+      "expected_matches": [
+        1
+      ],
+      "independent_label": {
+        "relevant_ids": [
+          1
+        ],
+        "ambiguity": null
+      },
+      "baseline_candidate_ids": [
+        2
+      ],
+      "match_ids": [
+        1
+      ],
+      "uncertain_ids": [],
+      "excluded_ids": [
+        3,
+        2
+      ],
+      "probabilities": {
+        "1": 0.82,
+        "2": 0.03,
+        "3": 0.17
+      },
+      "request_hashes": [
+        "fea9049fc6474a04690644d28e3ce0efdab26ccf791e10de88288c0f75ece4c2"
+      ],
+      "request_bytes": [
+        1827
+      ],
+      "usage": {
+        "input_tokens": 668,
+        "output_tokens": 58
+      },
+      "call_count": 1,
+      "database_unchanged": true,
+      "elapsed_ms": 266.76
+    },
+    {
+      "id": "dont-repeat-side-effects",
+      "split": "calibration",
+      "expected_matches": [
+        1
+      ],
+      "independent_label": {
+        "relevant_ids": [
+          1
+        ],
+        "ambiguity": null
+      },
+      "baseline_candidate_ids": [
+        1,
+        3,
+        2
+      ],
+      "match_ids": [
+        1
+      ],
+      "uncertain_ids": [],
+      "excluded_ids": [
+        3,
+        2
+      ],
+      "probabilities": {
+        "1": 0.85,
+        "2": 0.01,
+        "3": 0.04
+      },
+      "request_hashes": [
+        "27e02a6c93f03054882ac3899d103b81c687933a02c5001f00db30b86e7f28f7"
+      ],
+      "request_bytes": [
+        1994
+      ],
+      "usage": {
+        "input_tokens": 697,
+        "output_tokens": 58
+      },
+      "call_count": 1,
+      "database_unchanged": true,
+      "elapsed_ms": 246.21
+    },
+    {
+      "id": "stale-ui",
+      "split": "held_out",
+      "expected_matches": [
+        1
+      ],
+      "independent_label": {
+        "relevant_ids": [
+          1
+        ],
+        "ambiguity": null
+      },
+      "baseline_candidate_ids": [
+        2
+      ],
+      "match_ids": [
+        1
+      ],
+      "uncertain_ids": [],
+      "excluded_ids": [
+        3,
+        2
+      ],
+      "probabilities": {
+        "1": 0.85,
+        "2": 0.09,
+        "3": 0.09
+      },
+      "request_hashes": [
+        "f72af3be4c58c64d7833e2166f61f9a7e7464f0045c37cfae4a840fd75f45b53"
+      ],
+      "request_bytes": [
+        1984
+      ],
+      "usage": {
+        "input_tokens": 697,
+        "output_tokens": 58
+      },
+      "call_count": 1,
+      "database_unchanged": true,
+      "elapsed_ms": 246.83
+    },
+    {
+      "id": "voice-position",
+      "split": "held_out",
+      "expected_matches": [
+        1
+      ],
+      "independent_label": {
+        "relevant_ids": [
+          1
+        ],
+        "ambiguity": null
+      },
+      "baseline_candidate_ids": [],
+      "match_ids": [
+        1
+      ],
+      "uncertain_ids": [],
+      "excluded_ids": [
+        3,
+        2
+      ],
+      "probabilities": {
+        "1": 0.82,
+        "2": 0.02,
+        "3": 0.05
+      },
+      "request_hashes": [
+        "21536c271cdbf8aa6399f6e8c639bab920fa2cbc2af7a24388bb01b7522d7363"
+      ],
+      "request_bytes": [
+        1945
+      ],
+      "usage": {
+        "input_tokens": 690,
+        "output_tokens": 58
+      },
+      "call_count": 1,
+      "database_unchanged": true,
+      "elapsed_ms": 200.92
+    },
+    {
+      "id": "no-matching-capability",
+      "split": "held_out",
+      "expected_matches": [],
+      "independent_label": {
+        "relevant_ids": [],
+        "ambiguity": "No item provides a deterministic offline converter from PDF equations to editable LaTeX. Items 1 and 3 lack conversion logic, while item 2 requires a network connection and is non-deterministic."
+      },
+      "baseline_candidate_ids": [
+        3,
+        2
+      ],
+      "match_ids": [],
+      "uncertain_ids": [],
+      "excluded_ids": [
+        3,
+        2,
+        1
+      ],
+      "probabilities": {
+        "1": 0.02,
+        "2": 0.06,
+        "3": 0.02
+      },
+      "request_hashes": [
+        "54ddf1b74b0b3129e04782ba999eb3eff8402d8b8828e3e9fa8feb7b6f6e2d42"
+      ],
+      "request_bytes": [
+        2008
+      ],
+      "usage": {
+        "input_tokens": 699,
+        "output_tokens": 58
+      },
+      "call_count": 1,
+      "database_unchanged": true,
+      "elapsed_ms": 186.39
+    },
+    {
+      "id": "older-synonym-second-batch",
+      "split": "held_out",
+      "expected_matches": [
+        1
+      ],
+      "independent_label": {
+        "relevant_ids": [
+          1
+        ],
+        "ambiguity": null
+      },
+      "baseline_candidate_ids": [
+        1
+      ],
+      "match_ids": [
+        1
+      ],
+      "uncertain_ids": [
+        5,
+        4
+      ],
+      "excluded_ids": [
+        25,
+        24,
+        23,
+        22,
+        21,
+        20,
+        19,
+        18,
+        17,
+        16,
+        15,
+        14,
+        13,
+        12,
+        11,
+        10,
+        9,
+        8,
+        7,
+        6,
+        3,
+        2
+      ],
+      "probabilities": {
+        "1": 0.91,
+        "2": 0.09,
+        "3": 0.06,
+        "4": 0.22,
+        "5": 0.26,
+        "6": 0.03,
+        "7": 0.02,
+        "8": 0.02,
+        "9": 0.02,
+        "10": 0.02,
+        "11": 0.03,
+        "12": 0.02,
+        "13": 0.03,
+        "14": 0.02,
+        "15": 0.02,
+        "16": 0.02,
+        "17": 0.02,
+        "18": 0.02,
+        "19": 0.02,
+        "20": 0.03,
+        "21": 0.03,
+        "22": 0.03,
+        "23": 0.04,
+        "24": 0.03,
+        "25": 0.02
+      },
+      "request_hashes": [
+        "aa38866ea413866e5e7622a0884148d8e72a8458e3bf85d583670a82b298fb34",
+        "686c2df856d6aec32260ece7490db84f6c55bb197910acc37507358dc5e82e42"
+      ],
+      "request_bytes": [
+        11983,
+        3156
+      ],
+      "usage": {
+        "input_tokens": 4113,
+        "output_tokens": 474
+      },
+      "call_count": 2,
+      "database_unchanged": true,
+      "elapsed_ms": 512.86
+    }
+  ]
+}
