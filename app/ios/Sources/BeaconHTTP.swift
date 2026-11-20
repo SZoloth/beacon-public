@@ -48,14 +48,6 @@ struct BeaconHTTP: Backend {
         return try JSONDecoder().decode(LibraryPage.self, from: await send(URLRequest(url: url.url!)))
     }
 
-    func compose(search: String, ids: [Int]) async throws -> ComposeResult {
-        try JSONDecoder().decode(ComposeResult.self, from: await post("library/compose", ["search": search, "ids": ids], timeout: 90))
-    }
-
-    func composeChoice(id: Int, choice: String) async throws {
-        try await post("library/compose/choice", ["id": id, "choice": choice])
-    }
-
     func keep(url: String) async throws {
         try await post("add", ["url": url], timeout: 120)
     }

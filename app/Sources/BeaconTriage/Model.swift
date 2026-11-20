@@ -407,26 +407,6 @@ enum LibrarySearch: Equatable {
     }
 }
 
-/// A layout Claude suggested for one search's results (`beacon compose layout`). `layout` is nil when
-/// the plain grid should stay; `id` is nil when nothing was logged (too few saves, Claude unreachable).
-struct ComposeResult: Codable, Hashable {
-    struct Layout: Codable, Hashable {
-        struct Pick: Codable, Hashable { let id: Int; let why: String }
-        struct Group: Codable, Hashable { let title: String; let ids: [Int] }
-        let pick: Pick?
-        let groups: [Group]
-        let next: [String]
-    }
-
-    let id: Int?
-    let layout: Layout?
-    let why: String?
-    let costUsd: Double?
-    let cached: Bool?
-
-    enum CodingKeys: String, CodingKey { case id, layout, why, cached, costUsd = "cost_usd" }
-}
-
 /// One page of `beacon library`: saves with pictures plus GitHub stars, newest first.
 struct LibraryPage: Codable {
     struct Entry: Codable, Identifiable, Hashable {

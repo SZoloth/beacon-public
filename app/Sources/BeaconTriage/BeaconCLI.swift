@@ -76,19 +76,6 @@ actor BeaconCLI: Backend {
         return try JSONDecoder().decode(LibraryPage.self, from: run(["library", "--offset", String(offset), "--limit", String(limit)] + filter))
     }
 
-    /// Outside the actor: a Haiku call takes seconds, and the grid keeps paging meanwhile.
-    nonisolated func compose(search: String, ids: [Int]) async throws -> ComposeResult {
-        let repo = repo
-        return try await Task.detached {
-            let args = ["compose", "layout", "--search=\(search)", "--ids", ids.map(String.init).joined(separator: ",")]
-            return try JSONDecoder().decode(ComposeResult.self, from: Self.run(repo: repo, args))
-        }.value
-    }
-
-    func composeChoice(id: Int, choice: String) throws {
-        _ = try run(["compose", "choice", "--id", String(id), "--choice", choice])
-    }
-
     func references(brief: String, ids: [Int], words: Bool) throws -> ReferenceReview {
         // "--brief=…" so a brief that starts with a dash stays a brief.
         let args = ["references", "--brief=\(brief)", "--ids", ids.map(String.init).joined(separator: ",")]
@@ -303,8 +290,6 @@ actor BeaconCLI: Backend {
         // bird read (60 s) or a page fetch (15 s, lib/adds.py), then indexing the new save (30 min, lib/vectors.py).
         // The save is committed before indexing, so stopping early reports a save that landed as failed.
         "keep": 60 + 15 + 30 * 60,
-        // A meaning search (120 s, lib/vectors.py), then the layout model (60 s, lib/compose.py).
-        "compose": 120 + 60,
         // A meaning search, then Jev (20 s, lib/useful.py).
         "references": 120 + 20,
         // The agent's run (45 min, lib/activate.py RUN_TIMEOUT), after the git check (15 min, GIT_SCAN_TIMEOUT).

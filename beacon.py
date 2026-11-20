@@ -468,30 +468,7 @@ def cmd_library(args):
     from lib import vectors
     page = vectors.library_page(offset=args.offset, limit=args.limit, area=args.area, words=args.query,
                                 about=args.meaning, like=args.similar, query=args.search, refine=args.refine)
-    if args.compose:
-        if not args.search:
-            raise SystemExit("--compose needs --search")
-        from lib import compose
-        # Strong fits only, like the app: maybes would drag the layout's fit down.
-        strong = [entry["id"] for entry in page["items"] if entry.get("fit") == "strong"]
-        page["compose"] = compose.compose(", then ".join([args.search, *args.refine]), strong)
     print(json.dumps(page, ensure_ascii=False))
-
-
-def cmd_compose(args):
-    """A generated layout for a Library search over these saves, a choice about one, or how they've done."""
-    from lib import compose
-    if args.action == "summary":
-        result = compose.summary()
-    elif args.action == "choice":
-        if args.id is None or not args.choice:
-            raise SystemExit("compose choice needs --id and --choice")
-        result = compose.choose(args.id, args.choice)
-    else:
-        if not args.search or not args.ids:
-            raise SystemExit("compose layout needs --search and --ids")
-        result = compose.compose(args.search, [int(i) for i in args.ids.split(",") if i.strip()])
-    print(json.dumps(result, ensure_ascii=False))
 
 
 def cmd_keep(args):
@@ -1310,8 +1287,6 @@ def main():
     library_parser.add_argument("--area", help="Only saves on this area (shelf) slug")
     library_parser.add_argument("--search", help="The one search box: words and meaning fused, best first")
     library_parser.add_argument("--refine", action="append", default=[], help="A follow-up step narrowing --search (repeatable)")
-    library_parser.add_argument("--compose", action="store_true",
-                                help="With --search: also ask Claude (Haiku) for a layout of the first 40 results, and log it")
     library_parser.add_argument("--query", help="Only saves containing every word, best match first")
     library_parser.add_argument("--meaning", help="Saves closest in meaning to this text (needs `beacon vectors`)")
     library_parser.add_argument("--similar", type=int, help="Pictures that look like this item's")
@@ -1328,12 +1303,6 @@ def main():
     autopilot_parser = subparsers.add_parser("autopilot", help="Pass noise and send reading to Reader on your behalf")
     autopilot_parser.add_argument("--dry-run", action="store_true", help="Count what it would do; change nothing")
     autopilot_parser.add_argument("--read-limit", type=int, help="Reader saves per run (default 45)")
-    compose_parser = subparsers.add_parser("compose", help="Generated Library layouts: one for a search, a choice, or a summary")
-    compose_parser.add_argument("action", nargs="?", choices=["layout", "choice", "summary"], default="layout")
-    compose_parser.add_argument("--search", help="layout: what was searched (the steps joined by ', then ')")
-    compose_parser.add_argument("--ids", help="layout: the saves shown, best first, comma-separated")
-    compose_parser.add_argument("--id", type=int, help="choice: the layout id")
-    compose_parser.add_argument("--choice", choices=["kept", "dismissed", "ignored"])
     subparsers.add_parser("handled", help="What autopilot did in the last 14 days, as JSON")
     unhandle_parser = subparsers.add_parser("unhandle", help="Undo autopilot for one save: back to the queue")
     unhandle_parser.add_argument("item_id", type=int)
@@ -1749,7 +1718,6 @@ def _dispatch(args):
         "keep": cmd_keep,
         "references": cmd_references,
         "autopilot": cmd_autopilot,
-        "compose": cmd_compose,
         "handled": cmd_handled,
         "unhandle": cmd_unhandle,
         "activate": cmd_activate,

@@ -71,7 +71,6 @@ import Testing
     private static let pythonTimeouts: [([String], TimeInterval)] = [
         (["keep", "--url", "u"], 60 + 15 + 30 * 60),  // bird read, page fetch (lib/adds.py), indexing (lib/vectors.py)
         (["brief", "--project", "p"], 15 * 60),      // planning agent (lib/briefs.py)
-        (["compose", "layout"], 120 + 60),           // meaning search (lib/vectors.py), layout model (lib/compose.py)
         (["references", "--brief=b"], 120 + 20),     // meaning search, Jev (lib/useful.py)
         (["library", "--offset", "0"], 120),         // meaning search
         (["mark", "adopted", "1"], 0),

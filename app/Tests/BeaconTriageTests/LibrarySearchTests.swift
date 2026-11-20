@@ -25,16 +25,4 @@ struct LibrarySearchTests {
         #expect(page.items[1].fit == nil)
     }
 
-    @Test func aLayoutDecodesAndANullLayoutMeansThePlainGrid() throws {
-        let layout = try JSONDecoder().decode(ComposeResult.self, from: Data("""
-        {"id": 4, "layout": {"pick": {"id": 1, "why": "w"}, "groups": [{"title": "T", "ids": [1, 2]}], "next": ["tall"]},
-         "why": null, "cost_usd": 0.002, "cached": false}
-        """.utf8))
-        #expect(layout.layout?.groups.first?.ids == [1, 2])
-        #expect(layout.layout?.pick?.id == 1)
-        let none = try JSONDecoder().decode(ComposeResult.self, from: Data("""
-        {"id": null, "layout": null, "why": "too few saves to group", "cost_usd": 0.0, "cached": false}
-        """.utf8))
-        #expect(none.layout == nil && none.id == nil)
-    }
 }

@@ -30,7 +30,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from datetime import datetime
 
-from . import activate, adds, autopilot, briefs, calls, compose, db, pick, vectors
+from . import activate, adds, autopilot, briefs, calls, db, pick, vectors
 
 ROOT = Path(__file__).resolve().parent.parent
 NETWORKS = [ipaddress.ip_network(n) for n in ("127.0.0.0/8", "::1/128", "100.64.0.0/10", "fd7a:115c:a1e0::/48")]
@@ -270,8 +270,6 @@ def route(method, path, body, run=run_cli):
             raise ValueError("size must be a whole number from 1 to 30")
         with _writes:  # a new session is stored
             return 200, calls.session(int(size), new=params.get("new", ["0"])[0] in ("1", "true"))
-    if method == "GET" and path == "/library/compose/summary":
-        return 200, compose.summary()
     if method == "GET" and path == "/library":
         # Answered here, not by starting `beacon library`: a new Python process cost about a second.
         params = parse_qs(query)
@@ -317,14 +315,6 @@ def route(method, path, body, run=run_cli):
         if set(body) == {"answer"} and isinstance(body["answer"], str):
             return 200, activate.answer(activation_id, body["answer"])
         raise ValueError('send {"state": "done" or "didnt_work"} or {"answer": "..."}')
-    if path == "/library/compose":
-        # A layout for the saves the app is showing (best first). Seconds, not milliseconds: the app shows
-        # its grid first and offers this when it arrives.
-        return 200, compose.compose(str(body.get("search") or ""), body.get("ids"))
-    if path == "/library/compose/choice":
-        if type(body.get("id")) is not int:
-            raise ValueError("id must be a layout id")
-        return 200, compose.choose(body["id"], body.get("choice"))
     if path == "/pick/prepare":
         # Building a round takes minutes, so this starts it and returns; GET /pick/round says `preparing`.
         axis = body.get("axis")

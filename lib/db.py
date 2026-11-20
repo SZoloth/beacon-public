@@ -422,7 +422,8 @@ MIGRATIONS = [
     "REFERENCES call_overrides(id), flagged_at TEXT NOT NULL, used_session TEXT)",
     "CREATE TABLE IF NOT EXISTS call_redecides (id INTEGER PRIMARY KEY AUTOINCREMENT, stratum TEXT NOT NULL, "
     "started_at TEXT NOT NULL, finished_at TEXT, result_json TEXT)",
-    # Generated Library layouts (lib/compose.py): what was offered for which search, and what you did with it.
+    # Generated Library layouts. The app no longer writes it (Arrange was dropped); the experiment's composers in
+    # runs/2026-11-19-arrange-r3 still log to it on database copies.
     "CREATE TABLE IF NOT EXISTS compose_log (id INTEGER PRIMARY KEY AUTOINCREMENT, search TEXT NOT NULL, "
     "ids_json TEXT NOT NULL, layout_json TEXT, why TEXT, model TEXT NOT NULL, cost_usd REAL, created_at TEXT NOT NULL, "
     "choice TEXT CHECK(choice IN ('kept','dismissed','ignored')), chosen_at TEXT)",

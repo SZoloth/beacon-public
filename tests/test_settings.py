@@ -142,7 +142,7 @@ class PublicExportTest(unittest.TestCase):
         exported = {str(p.relative_to(self.out)) for p in self.out.rglob("*") if p.is_file()}
         self.assertIn("config.example.json", exported)
         self.assertIn("lib/settings.py", exported)
-        for left_out in ("config.json", "plans/activation-log.md"):
+        for left_out in ("config.json", "plans/activation-log.md", "tests/test_arrange_clusters.py"):
             self.assertNotIn(left_out, exported)
         for prefix in ("runs/", "docs/perf/", ".pstack/", ".agents/"):
             self.assertFalse([p for p in exported if p.startswith(prefix)], prefix)

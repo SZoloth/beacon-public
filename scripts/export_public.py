@@ -28,7 +28,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 # Run logs, evals on the owner's decisions, dated plans and reviews of their own setup, agent notes,
-# and the tests of the owner's own config.json (they name its clients and projects).
+# the tests of the owner's own config.json (they name its clients and projects), and tests of experiments in runs/.
 # The roadmap, design record, research notes and audits are the owner's working history, and the
 # hosted beta is a separate invite-only product. PR screenshots show demo data under real people's
 # handles, which must not ship as if they were real posts.
@@ -37,7 +37,8 @@ EXCLUDED_DIRS = ("runs/", "docs/perf/", "docs/plans/", "plans/", ".pstack/", ".a
 EXCLUDED_FILES = {"config.json", "THEORY.MD", "docs/ROADMAP.md", "docs/beacon-backlog.md", "docs/beacon-backlog-archive.md",
                   "docs/useful-now.md", "docs/review-vault-2026-04-16.md", "docs/review-agent-workflows-2026-04-16.md",
                   "app/docs/screenshot.jpg", "app/docs/briefs.jpg",
-                  "tests/test_private_setup.py"}
+                  "tests/test_private_setup.py",
+                  "tests/test_arrange_clusters.py"}  # loads an experiment from runs/, which isn't exported
 ESCAPE = re.compile(r"\\[ntr]")
 HOME_PATH = re.compile(r"/(?:Users|home)/[^/\s\"']+/")
 # Blocks regenerated from the owner's database (their real saves); kept as empty markers.

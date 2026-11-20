@@ -90,6 +90,13 @@ class RouteTest(unittest.TestCase):
         self.assertEqual(self.route("POST", "/sync")[0], 404)
         self.assertEqual(self.calls, [])
 
+    def test_the_dropped_arrange_routes_are_gone(self):
+        for method, path, body in [("POST", "/library/compose", {"search": "chairs", "ids": [1, 2, 3, 4]}),
+                                   ("POST", "/library/compose/choice", {"id": 1, "choice": "kept"}),
+                                   ("GET", "/library/compose/summary", {})]:
+            self.assertEqual(self.route(method, path, body)[0], 404, path)
+        self.assertEqual(self.calls, [])
+
     def test_only_tailscale_and_this_mac_may_connect(self):
         self.assertTrue(server.allowed("127.0.0.1"))
         self.assertTrue(server.allowed("100.79.14.83"))

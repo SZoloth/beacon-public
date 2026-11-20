@@ -11,10 +11,6 @@ import UniformTypeIdentifiers
 final class LibraryModel {
     /// Follow-up steps one search can take.
     static let maxSteps = 5
-    /// How many of the strongest results a generated layout covers (Beacon's own cap).
-    static let arrangeLimit = 40
-    /// The title Beacon gives the leftovers of a layout (`compose.OTHER`).
-    static let otherMatches = "Other matches"
 
     private(set) var entries: [LibraryPage.Entry] = []
     private(set) var error: String?
@@ -27,15 +23,6 @@ final class LibraryModel {
     private(set) var searched: [String]?
     /// How many saves the current follow-up steps set aside.
     private(set) var setAside = 0
-    /// A layout Claude suggested for the current search, offered and not yet answered or closed.
-    private(set) var offer: ComposeResult?
-    /// Whether the offered layout is showing in place of the grid.
-    private(set) var arranged = false
-    private var offerAnswered = false
-    /// The search (by generation) a layout request is out for, so one search asks once.
-    private var composing: Int?
-    /// The "Arrange" switch; set by the view from its stored setting.
-    var arrangeEnabled = false
     private var nextOffset: Int? = 0
     private var generation = 0
     var linkedEntry: LibraryPage.Entry?
@@ -127,9 +114,6 @@ final class LibraryModel {
     func show(shelf: String?, search: LibrarySearch?) async {
         guard shelf != self.shelf || search != self.search || entries.isEmpty else { return }
         if case .similar = search {} else { similarTo = nil }
-        answerOffer("ignored")
-        withAnimation(.spring(duration: 0.4)) { offer = nil; arranged = false }
-        offerAnswered = false
         self.shelf = shelf
         self.search = search
         error = nil
@@ -140,11 +124,7 @@ final class LibraryModel {
         nextOffset = 0
         isLoading = false
         await loadMore()
-        await requestLayout()
     }
-
-    /// The morph between the grid and the arranged sections (Suave's: a spring with no bounce).
-    static let morph = Animation.spring(duration: 0.4, bounce: 0)
 
     /// Reads pages until about 60 more saves arrive. Outside a search the feed also carries GitHub
     /// stars, which have no picture and stay out of the grid; a search keeps them, as text cards.
@@ -187,80 +167,6 @@ final class LibraryModel {
         }
     }
 
-    // MARK: Generated layout (the "Arrange" switch)
-
-    /// Asks for a layout of the strongest results once they've settled. Offered, never applied:
-    /// the grid stays until you tap the offer. Says nothing when there's no layout.
-    func requestLayout() async {
-        guard arrangeEnabled, offer == nil, composing != generation, let query else { return }
-        let ids = strong.prefix(Self.arrangeLimit).map(\.id)
-        guard ids.count >= 4 else { return }  // Beacon needs two groups of two
-        let mine = generation
-        composing = mine
-        defer { if composing == mine { composing = nil } }
-        let text = ([query] + steps).joined(separator: ", then ")
-        guard let result = try? await backend.compose(search: text, ids: Array(ids)),
-              mine == generation, arrangeEnabled, result.layout != nil else { return }
-        offerAnswered = false
-        withAnimation(.spring(duration: 0.35, bounce: 0)) { offer = result }
-    }
-
-    /// Shows the offered layout in place of the grid.
-    func arrange() {
-        guard offer?.layout != nil else { return }
-        answerOffer("kept")
-        arranged = true
-    }
-
-    /// Closes the offer: "No thanks".
-    func dismissLayout() {
-        answerOffer("dismissed")
-        offer = nil
-        arranged = false
-    }
-
-    /// Back to the plain grid, keeping the offer (and its follow-ups) to arrange again.
-    func showGrid() { arranged = false }
-
-    /// The Arrange switch went off: an unanswered offer counts as ignored.
-    func stopArranging() {
-        answerOffer("ignored")
-        offer = nil
-        arranged = false
-    }
-
-    /// One answer per layout: the first of kept, dismissed or ignored.
-    private func answerOffer(_ choice: String) {
-        guard let id = offer?.id, !offerAnswered else { return }
-        offerAnswered = true
-        let backend = backend
-        Task { try? await backend.composeChoice(id: id, choice: choice) }
-    }
-
-    /// The arranged sections: the pick, the titled groups, and "Other matches" last, which also takes
-    /// strong results past the first 40.
-    var sections: (pick: (entry: LibraryPage.Entry, why: String)?, groups: [(title: String, entries: [LibraryPage.Entry])]) {
-        guard let layout = offer?.layout else { return (nil, []) }
-        let byId = Dictionary(strong.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        var used = Set<Int>()
-        let pick = layout.pick.flatMap { pick in byId[pick.id].map { (entry: $0, why: pick.why) } }
-        if let pick { used.insert(pick.entry.id) }
-        var groups: [(title: String, entries: [LibraryPage.Entry])] = []
-        for group in layout.groups {
-            let members = group.ids.compactMap { used.insert($0).inserted ? byId[$0] : nil }
-            if !members.isEmpty { groups.append((group.title, members)) }
-        }
-        let rest = strong.filter { !used.contains($0.id) }
-        if !rest.isEmpty {
-            if let last = groups.indices.last, groups[last].title == Self.otherMatches {
-                groups[last].entries += rest
-            } else {
-                groups.append((Self.otherMatches, rest))
-            }
-        }
-        return (pick, groups)
-    }
-
     /// The line above the title: the shelf, or what you're searching for.
     var subtitle: String {
         switch search {
@@ -289,14 +195,12 @@ final class LibraryModel {
 struct LibraryView: View {
     let model: LibraryModel
     @State private var searchText = ""
-    @AppStorage("libraryArrange") private var arrange = false
     @State private var adding = false
     @State private var reviewing = false
     /// The save open in its sheet; one sheet for the whole grid instead of one per tile.
     @State private var opened: LibraryPage.Entry?
     @State private var dropping = false
     @FocusState private var searchFocused: Bool
-    @Namespace private var tiles
 
     var body: some View {
         #if os(macOS)
@@ -367,10 +271,7 @@ struct LibraryView: View {
                     }
                 }
                 .padding(.top, TodayView.headerTop + 20)
-                HStack(spacing: 10) {
-                    SearchField(text: $searchText, focused: $searchFocused)
-                    ArrangeSwitch(on: $arrange)
-                }
+                SearchField(text: $searchText, focused: $searchFocused)
                 #if os(iOS)
                 ShelfChips(model: model)
                 #endif
@@ -382,14 +283,9 @@ struct LibraryView: View {
                 } else if !model.isLoading && model.entries.isEmpty {
                     Text(model.emptyMessage).foregroundStyle(Theme.quiet).padding(.top, 30)
                 }
-                if model.arranged {
-                    ArrangedSections(model: model, columns: columns, namespace: tiles) { opened = $0 }
-                        .transition(.opacity)
-                } else {
-                    Masonry(entries: model.strong, columns: columns, namespace: tiles) {
-                        Task { await model.loadMore() }
-                    } open: { opened = $0 }
-                }
+                Masonry(entries: model.strong, columns: columns) {
+                    Task { await model.loadMore() }
+                } open: { opened = $0 }
                 if !model.maybe.isEmpty {
                     SectionTitle(title: "Might also fit", count: model.maybe.count)
                         .padding(.top, 12)
@@ -434,14 +330,6 @@ struct LibraryView: View {
         .task { if model.entries.isEmpty { await model.loadMore() } }
         .onChange(of: model.linkedEntry, initial: true) {
             if let entry = model.linkedEntry { opened = entry; model.linkedEntry = nil }
-        }
-        .onChange(of: arrange, initial: true) {
-            model.arrangeEnabled = arrange
-            if arrange {
-                Task { await model.requestLayout() }
-            } else if model.offer != nil {
-                withAnimation(LibraryModel.morph) { model.stopArranging() }
-            }
         }
         // Searches a beat after you stop typing, not on every key.
         .task(id: searchText) {
@@ -489,34 +377,8 @@ private struct SearchField: View {
     }
 }
 
-/// Whether a search offers to arrange its results into groups (a Claude call per search, about $0.002).
-private struct ArrangeSwitch: View {
-    @Binding var on: Bool
-
-    var body: some View {
-        Button {
-            withAnimation(.spring(duration: 0.3, bounce: 0.2)) { on.toggle() }
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "square.grid.3x1.below.line.grid.1x2")
-                    .symbolEffect(.bounce, value: on)
-                Text("Arrange")
-            }
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(on ? .white : Theme.quiet)
-            .padding(.horizontal, 12)
-            .frame(height: 34)
-            .background(on ? Theme.ink : Theme.shelfSide, in: .capsule)
-            .contentShape(.capsule)
-        }
-        .buttonStyle(PressScale())
-        .accessibilityAddTraits(on ? .isSelected : [])
-        .help("Offer to group search results")
-    }
-}
-
 /// Under the search box: the trail of steps, a field for the next one, what the steps set aside,
-/// the layout offer, and a quiet line when meaning search is off.
+/// and a quiet line when meaning search is off.
 private struct SearchSteps: View {
     let model: LibraryModel
     @State private var step = ""
@@ -555,30 +417,7 @@ private struct SearchSteps: View {
                 .animation(.spring(duration: 0.35, bounce: 0.2), value: model.steps)
             }
             .scrollClipDisabled()
-            if let offer = model.offer, !model.arranged {
-                LayoutOffer(model: model, offer: offer)
-                    .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity),
-                                            removal: .scale(scale: 0.96).combined(with: .opacity)))
-            }
-            if let next = model.offer?.layout?.next, !next.isEmpty, model.canNarrow {
-                HStack(spacing: 6) {
-                    ForEach(next, id: \.self) { text in
-                        Button { Task { await model.narrow(text) } } label: {
-                            Label(text, systemImage: "plus")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(Theme.ink)
-                                .padding(.horizontal, 12)
-                                .frame(height: 30)
-                                .overlay(Capsule().strokeBorder(Theme.shelfSide, lineWidth: 1.5))
-                        }
-                        .buttonStyle(PressScale())
-                    }
-                }
-                .transition(.opacity.combined(with: .offset(y: -4)))
-            }
         }
-        .animation(.spring(duration: 0.4), value: model.offer)
-        .animation(.spring(duration: 0.4), value: model.arranged)
     }
 
     /// One step of the trail: tap to go back to it; the last one has an x that removes it.
@@ -626,92 +465,6 @@ private struct SearchSteps: View {
         .frame(height: 30)
         .overlay(Capsule().strokeBorder(Theme.shelfSide, lineWidth: 1.5))
         .animation(.spring(duration: 0.3), value: focused)
-    }
-}
-
-/// The tray that offers a generated layout. The grid stays put until you tap it.
-private struct LayoutOffer: View {
-    let model: LibraryModel
-    let offer: ComposeResult
-
-    var body: some View {
-        let count = offer.layout?.groups.filter { $0.title != LibraryModel.otherMatches }.count ?? 0
-        HStack(spacing: 10) {
-            Button {
-                withAnimation(LibraryModel.morph) { model.arrange() }
-                Platform.tap()
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "sparkle").foregroundStyle(Theme.accent)
-                    Text("Arrange into \(count) groups").foregroundStyle(Theme.ink)
-                }
-                .font(.system(size: 14, weight: .semibold))
-            }
-            .buttonStyle(PressScale())
-            Button {
-                withAnimation(.spring(duration: 0.4)) { model.dismissLayout() }
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(Theme.quiet)
-                    .frame(width: 22, height: 22)
-                    .background(Theme.shelf, in: .circle)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("No thanks")
-        }
-        .padding(.leading, 14)
-        .padding(.trailing, 6)
-        .frame(height: 38)
-        .background(.white, in: .capsule)
-        .shadow(color: .black.opacity(0.08), radius: 8, y: 3)
-    }
-}
-
-/// The offered layout, once kept: the pick large with its reason, then titled groups, "Other matches" last.
-/// Tiles share the grid's namespace, so they move from the grid into their sections.
-private struct ArrangedSections: View {
-    let model: LibraryModel
-    let columns: Int
-    let namespace: Namespace.ID
-    let open: (LibraryPage.Entry) -> Void
-
-    var body: some View {
-        let sections = model.sections
-        VStack(alignment: .leading, spacing: 22) {
-            HStack {
-                Spacer()
-                Button("Back to the grid") {
-                    withAnimation(LibraryModel.morph) { model.showGrid() }
-                }
-                .buttonStyle(.plain)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Theme.accent)
-            }
-            if let pick = sections.pick {
-                VStack(alignment: .leading, spacing: 8) {
-                    LibraryTile(entry: pick.entry) { open(pick.entry) }
-                        .matchedGeometryEffect(id: pick.entry.id, in: namespace)
-                        .frame(maxWidth: 440)
-                    if !pick.why.isEmpty {
-                        Text(pick.why)
-                            .font(.system(size: 14))
-                            .foregroundStyle(Theme.ink)
-                    }
-                }
-            }
-            ForEach(Array(sections.groups.enumerated()), id: \.offset) { index, group in
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(group.title)
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(Theme.ink)
-                    // The last section ("Other matches") grows as more results load.
-                    Masonry(entries: group.entries, columns: columns, namespace: namespace, nearEnd: {
-                        if index == sections.groups.count - 1 { Task { await model.loadMore() } }
-                    }, open: open)
-                }
-            }
-        }
     }
 }
 
@@ -806,8 +559,6 @@ private struct ShelfChips: View {
 private struct Masonry: View {
     let entries: [LibraryPage.Entry]
     let columns: Int
-    /// Set when tiles should move between this grid and the arranged sections.
-    var namespace: Namespace.ID? = nil
     /// Called when the screen gets near the bottom of what's loaded.
     let nearEnd: () -> Void
     let open: (LibraryPage.Entry) -> Void
@@ -828,9 +579,6 @@ private struct Masonry: View {
                     }
                 }
                     .frame(width: tile.frame.width, height: tile.frame.height)
-                    .matched(tile.id, in: namespace)
-                    // Padding, not offset: it places the tile in layout, where matchedGeometryEffect
-                    // reads frames (an offset only moves the drawing).
                     .padding(.leading, tile.frame.minX)
                     .padding(.top, tile.frame.minY)
             }
@@ -853,14 +601,6 @@ private struct Masonry: View {
             self.window = window
             if window.upperBound > layout.height - 400 { nearEnd() }
         }
-    }
-}
-
-extension View {
-    /// matchedGeometryEffect when there's a namespace to match in.
-    @ViewBuilder
-    func matched(_ id: Int, in namespace: Namespace.ID?) -> some View {
-        if let namespace { matchedGeometryEffect(id: id, in: namespace) } else { self }
     }
 }
 

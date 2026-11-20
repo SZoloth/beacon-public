@@ -36,10 +36,6 @@ protocol Backend: ActivityBackend, PickBackend {
     func handled() async throws -> [HandledItem]
     /// Undoes autopilot for one save: it goes back to the queue.
     func unhandle(id: Int) async throws
-    /// A layout Claude (Haiku) suggests for these search results, best first. Seconds; cached per search.
-    func compose(search: String, ids: [Int]) async throws -> ComposeResult
-    /// What you did with an offered layout: "kept", "dismissed" or "ignored".
-    func composeChoice(id: Int, choice: String) async throws
 }
 
 /// ".jpg", ".png" and so on from a picture's first bytes; nil if Beacon doesn't keep that kind.

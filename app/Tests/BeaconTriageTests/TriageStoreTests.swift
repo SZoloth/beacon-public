@@ -60,10 +60,6 @@ private actor FakeBackend: Backend {
     }
     func handled() async throws -> [HandledItem] { [] }
     func unhandle(id: Int) async throws {}
-    func compose(search: String, ids: [Int]) async throws -> ComposeResult {
-        ComposeResult(id: nil, layout: nil, why: "fake", costUsd: 0, cached: false)
-    }
-    func composeChoice(id: Int, choice: String) async throws {}
     func activity() async throws -> [Activation] { [] }
     func activate(itemId: Int) async throws -> Activation? { nil }
     func answer(activation id: Int, text: String) async throws -> Activation? { nil }
