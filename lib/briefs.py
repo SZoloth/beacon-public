@@ -15,7 +15,7 @@ from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from . import autopilot, db, settings, useful
+from . import autopilot, claude_accounts, db, settings, useful
 
 BATCH = 8  # items per agent run; more dilutes attention on each
 UNSUPPORTED_BELOW = 0.5  # below this, a claim is shown as "not verified against the saved item"
@@ -160,7 +160,7 @@ def sonnet(prompt, schema, system, *, tools="", cwd=None, timeout=900, model="so
                "--system-prompt", system, "--tools", tools] + (["--allowedTools", tools] if tools else []) + \
               ["--output-format", "json", "--json-schema", json.dumps(schema), "--", prompt]
     env = _agent_env() | ({} if cache else {"DISABLE_PROMPT_CACHING": "1"})
-    result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, timeout=timeout, env=env)
+    result = claude_accounts.run(command, run=subprocess.run, cwd=cwd, capture_output=True, text=True, timeout=timeout, env=env)
     try:
         payload = json.loads(result.stdout)
     except json.JSONDecodeError:

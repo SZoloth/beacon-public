@@ -168,7 +168,7 @@ def check_public():
     if count in ("", "0"):
         yield "ok", "public release", "has every code change on main"
     else:
-        yield "warn", "public release", f"{count} code commits on main since it; re-export with scripts/export_public.py"
+        yield "warn", "public release", f"{count} code commits on main since it; publish with scripts/publish-public"
 
 
 def main(argv):

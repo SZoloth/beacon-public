@@ -18,3 +18,5 @@ media/
 # Per-session agent state
 .claude/memory/
 .claude/worktrees/
+.claude-limits.json
+.claude-limits.tmp

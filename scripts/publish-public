@@ -1,0 +1,58 @@
+#!/bin/zsh
+# Publish main to the public repo (<owner>/beacon-public) as one new commit, only if every gate passes:
+#   1. export from a clean checkout of origin/main (never uncommitted local edits) and scan for personal text
+#   2. stop on new or changed pictures and other binary files, which the scan can't read (look, then --binaries-checked)
+#   3. run every test on the Mac's stock /usr/bin/python3 with an empty home folder, as a stranger would
+# Usage: scripts/publish-public [--dry-run] [--binaries-checked]
+set -euo pipefail
+dry=0 binaries_ok=0
+for arg in "$@"; do
+  case $arg in
+    --dry-run) dry=1 ;;
+    --binaries-checked) binaries_ok=1 ;;
+    *) echo "usage: scripts/publish-public [--dry-run] [--binaries-checked]" >&2; exit 2 ;;
+  esac
+done
+root=${0:A:h:h}
+cd $root
+origin=$(git remote get-url origin)
+owner=${${${origin%.git}:h}:t}; owner=${owner##*:}
+public="https://github.com/$owner/beacon-public"
+work=$(mktemp -d)
+cleanup() { git -C $root worktree remove --force $work/src 2>/dev/null || true; rm -rf $work; }
+trap cleanup EXIT
+
+git fetch -q origin
+sha=$(git rev-parse --short origin/main)
+git worktree add -q --detach $work/src origin/main
+mkdir $work/export
+if ! /usr/bin/python3 $work/src/scripts/export_public.py $work/export > $work/scan.log 2>&1; then
+  cat $work/scan.log; echo "Stopped: the scan found personal text (above). Nothing was published." >&2; exit 1
+fi
+
+git clone -q $public $work/repo
+rsync -a --delete --exclude=.git $work/export/ $work/repo/
+cd $work/repo
+git add -A
+if git diff --cached --quiet; then echo "The public repo already matches main ($sha)."; exit 0; fi
+binaries=(${(f)"$(git diff --cached --numstat | awk '$1 == "-" {print $3}')"})
+if (( $#binaries && ! binaries_ok )); then
+  printf '  %s\n' $binaries
+  echo "Stopped: new or changed binary files (above) can't be scanned. Open them, then rerun with --binaries-checked." >&2
+  exit 1
+fi
+
+stranger=$(mktemp -d $work/home.XXXX)
+if ! HOME=$stranger /usr/bin/python3 -m unittest discover -s tests > $work/tests.log 2>&1; then
+  tail -30 $work/tests.log; echo "Stopped: tests fail on the stock Python (above). Nothing was published." >&2; exit 1
+fi
+grep -E "^Ran " $work/tests.log
+
+since=$(git log -1 --format=%cI)
+changes=$(git -C $root log --format='- %s' --since=$since origin/main -- . ':!docs/ROADMAP.md' ':!hosted' | head -20)
+git diff --cached --stat | tail -1
+if (( dry )); then echo "Dry run: would publish main at $sha with:"; echo $changes; exit 0; fi
+git -c user.name="$(git -C $root log -1 --format=%an origin/main)" -c user.email="$(git -C $root log -1 --format=%ae origin/main)" \
+  commit -q -m "update: main at $sha" -m "$changes"
+git push -q origin HEAD
+echo "Published main at $sha to $public"

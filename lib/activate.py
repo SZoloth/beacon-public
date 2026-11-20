@@ -17,7 +17,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
 
-from . import briefs, db, followups, gists, references, settings
+from . import briefs, claude_accounts, db, followups, gists, references, settings
 
 CONFIG_PATH = None  # None follows settings.config_path(), so BEACON_CONFIG applies
 PROGRAMS = {"codex": "codex", "claude": "claude"}
@@ -522,7 +522,9 @@ def start(item_id, *, launch=_in_thread):
 
 
 def _runner_env():
-    return {k: v for k, v in briefs._agent_env().items() if k not in STRIPPED_ENV}
+    """An agent run streams, so it can't retry on another account; it starts on the first one not at its limit."""
+    env = claude_accounts.env_for(claude_accounts.ordered()[0], briefs._agent_env())
+    return {k: v for k, v in env.items() if k not in STRIPPED_ENV}
 
 
 def _set_runner_pgid(activation_id, pid):

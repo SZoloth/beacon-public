@@ -8,6 +8,7 @@ Bookmark & Star Intake System. Syncs X bookmarks and GitHub stars into SQLite, A
 - Long-running processes (the MCP server registered in each Claude Code profile's `.claude.json` and in `~/.codex/config.toml`, and the `com.example.beacon-serve` launchd job) start through `scripts/python`. It runs a uv-managed Python through the link `~/.local/share/beacon/python`, pinned to one patch release, because Homebrew upgrades delete the old Python and broke running servers on 2026-11-19 (`No module named '_strptime'`). `scripts/bump-python` runs monthly (launchd `com.example.beacon-python-bump`, log `~/Library/Logs/beacon-python-bump.log`): it installs the newest 3.14 patch, runs the tests on it and moves the link only if they pass; a failure sends a macOS notification
 - SQLite with FTS5 for search
 - `claude --print --model sonnet` for classification
+- Every headless `claude` run goes through `lib/claude_accounts.py`: config `claude_accounts` lists the subscriptions in order (`default`, then a `CLAUDE_CONFIG_DIR` such as `~/.claude-second`). One that reports a usage limit hands the call to the next and is tried last for 6 hours (`.claude-limits.json` beside the database)
 - `bird` CLI for X bookmarks, `gh api` for GitHub stars
 
 ## Commands
@@ -52,6 +53,13 @@ It works in its own worktree and stops on any other conflict, a failing test or 
 scripts/doctor               # launchd jobs, phone server, Keychain sign-ins, pinned Python, git sync, hosted deploy, public release
 ```
 The Monday job runs it last with `--notify`. Exit 1 means a FAIL line needs fixing; warn lines don't fail it.
+
+## Publishing the public repo
+```bash
+scripts/publish-public --dry-run   # export origin/main, scan, stranger-Python tests; shows what would ship
+scripts/publish-public             # the same, then one commit to <owner>/beacon-public
+```
+It stops on personal text, on new or changed binary files (look at them, then `--binaries-checked`) and on any failing test.
 
 ## Installing the apps
 ```bash

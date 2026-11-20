@@ -4,6 +4,8 @@ import json
 import os
 import subprocess
 
+from . import claude_accounts
+
 _CIRCUIT_THRESHOLD = 2
 _consecutive_failures = {}
 
@@ -55,14 +57,9 @@ def run_json_prompt_result(prompt, timeout=120, runners=None):
             continue
 
         try:
-            result = subprocess.run(
-                command,
-                input=prompt,
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-            )
+            options = dict(input=prompt, env=env, capture_output=True, text=True, timeout=timeout)
+            result = claude_accounts.run(command, run=subprocess.run, **options) if runner == "claude" \
+                else subprocess.run(command, **options)
         except FileNotFoundError:
             _consecutive_failures[runner] = _consecutive_failures.get(runner, 0) + 1
             errors.append(f"{runner} not installed")
