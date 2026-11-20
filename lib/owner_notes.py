@@ -171,8 +171,16 @@ def sync_mymind(cli_dir, db_path=None, run=_run):
     objects = [json.loads(line) for line in lines if line.strip()]
     if not objects:
         raise RuntimeError("mymind listed no objects, so no notes were changed.")
-    return store("mymind", mymind_records(objects), complete=True, db_path=db_path,
-                 owns=lambda external_id: not external_id.endswith(mymind.EXPORT_NOTE))
+    result = store("mymind", mymind_records(objects), complete=True, db_path=db_path,
+                   owns=lambda external_id: not external_id.endswith(mymind.EXPORT_NOTE))
+    _record_success("mymind", result, db_path)
+    return result
+
+
+def _record_success(key, result, db_path):
+    """The doctor fails a source whose last success is over a week old, so a source that stops is noticed."""
+    with closing(db.get_connection(db_path)) as conn:
+        _save_state(conn, key, {}, result.get("annotated", 0))
 
 
 READWISE_FIELDS = ["text", "note", "tags", "url", "highlighted_at", "updated", "book_id", "book_title", "book_author",
@@ -336,7 +344,9 @@ def sync_granola(folder, db_path=None):
     folder = Path(folder)
     if not folder.is_dir() or not any(DIGEST_FILE.match(path.name) for path in folder.iterdir()):
         raise RuntimeError(f"No Granola digests in {folder}, so no notes were changed.")
-    return store("granola", granola_records(folder), complete=True, db_path=db_path)
+    result = store("granola", granola_records(folder), complete=True, db_path=db_path)
+    _record_success("granola-digests", result, db_path)
+    return result
 
 
 def sync(name, full=False):

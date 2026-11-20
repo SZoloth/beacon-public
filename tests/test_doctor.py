@@ -21,5 +21,25 @@ class LaunchdStateTest(unittest.TestCase):
         self.assertEqual(doctor.launchd_state("\tstate = not running\n\tlast exit code = -15\n"), (False, -15))
 
 
+class SourceFreshnessTest(unittest.TestCase):
+    NOW = "2026-11-30T12:00:00+00:00"
+
+    def test_a_source_that_last_synced_over_a_week_ago_fails_with_its_fix(self):
+        found = list(doctor.source_freshness({"x": "2026-11-03T01:21:58+00:00", "mymind": "2026-11-29T08:00:00+00:00"},
+                                             ["x", "mymind"], self.NOW))
+        self.assertEqual(found[0][:2], ("fail", "x sync"))
+        self.assertIn("27 days", found[0][2])
+        self.assertIn("scripts/x-keys", found[0][2])
+        self.assertEqual(found[1][:2], ("ok", "mymind sync"))
+
+    def test_a_date_stored_without_a_zone_is_read_as_utc(self):
+        self.assertEqual(list(doctor.source_freshness({"github": "2026-11-29T12:00:00"}, ["github"], self.NOW))[0][:2],
+                         ("ok", "github sync"))
+
+    def test_an_enabled_source_that_never_synced_fails(self):
+        self.assertEqual(list(doctor.source_freshness({}, ["granola-digests"], self.NOW))[0][:2],
+                         ("fail", "granola-digests sync"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -520,6 +520,14 @@ class GranolaDigestsTest(unittest.TestCase):
             item = conn.execute("SELECT source, title, url FROM items").fetchone()
         self.assertEqual(tuple(item), ("granola", "Kiln planning", "https://notes.granola.ai/d/00000000-0000-0000-0000-00000000000b"))
 
+    def test_a_sync_that_succeeds_records_when_so_the_doctor_can_tell_a_stopped_one(self):
+        (self.folder / "2026-11-18.md").write_text(DIGEST)
+        owner_notes.sync_granola(self.folder)
+        owner_notes.sync_mymind("/cli", run=lambda command, timeout: json.dumps(mymind_object("a", notes=["x"])))
+        with closing(db.get_connection()) as conn:
+            recorded = {row[0] for row in conn.execute("SELECT source FROM sync_state WHERE last_sync IS NOT NULL")}
+        self.assertLessEqual({"granola-digests", "mymind"}, recorded)
+
     def test_an_idea_gone_from_the_digests_goes_and_an_empty_folder_changes_nothing(self):
         (self.folder / "2026-11-18.md").write_text(DIGEST)
         owner_notes.sync_granola(self.folder)

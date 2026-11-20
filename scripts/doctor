@@ -12,7 +12,7 @@ import shutil
 import subprocess
 import sys
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -23,7 +23,16 @@ JOBS = {  # label: True when the job should be running all the time
     "com.example.beacon-calls-rank": False,
     "com.example.beacon-python-bump": False,
 }
-KEYS = ("READWISE_ACCESS_TOKEN", "BEACON_X_AUTH_TOKEN", "BEACON_X_CT0")
+KEYS = ("BEACON_X_AUTH_TOKEN", "BEACON_X_CT0")
+STALE_DAYS = 8  # the Monday job syncs every source once a week
+SOURCE_FIXES = {  # sync_state key: what to do when it stops syncing
+    "x": "sign in to x.com in Safari, then run scripts/x-keys",
+    "mymind": "check the mymind access key in ~/.config/mymind/key.json",
+    "readwise-notes": "run `readwise login`",
+    "readwise-api": "run `readwise login`",
+    "granola-digests": "the Granola triage job stopped writing digests",
+    "github": "run `gh auth status`",
+}
 
 
 def run(*command, cwd=ROOT, timeout=60):
@@ -77,6 +86,34 @@ def check_keys():
         status, _, _ = run(str(tool), "--check", name) if tool.exists() else (1, "", "")
         fix = "scripts/x-keys" if name.startswith("BEACON_X") else f"with-secret --add {name}"
         yield ("ok", name, "in Keychain") if status == 0 else ("fail", name, f"missing; run {fix}")
+
+
+def source_freshness(last_syncs, sources, now):
+    """One line per source: ok when it synced within STALE_DAYS of `now`, else fail with its fix."""
+    for source in sources:
+        last = last_syncs.get(source)
+        name, fix = f"{source} sync", SOURCE_FIXES.get(source, "see the weekly log")
+        if not last:
+            yield "fail", name, f"never synced; {fix}"
+            continue
+        when = datetime.fromisoformat(last)
+        when = when if when.tzinfo else when.replace(tzinfo=timezone.utc)  # older rows were written without a zone
+        days = (datetime.fromisoformat(now) - when).days
+        yield ("ok", name, f"{days} days ago") if days < STALE_DAYS else ("fail", name, f"last synced {days} days ago; {fix}")
+
+
+def check_sources():
+    """A source that stops syncing fails here, not only in the weekly log (X went 17 days unnoticed in Nov 2026)."""
+    import sqlite3
+    config = json.loads((ROOT / "config.json").read_text())
+    database = Path(os.path.expanduser((config.get("paths") or {}).get("live_db") or str(ROOT / "beacon.db")))
+    paths = config.get("paths") or {}
+    sources = ["x", "github"] + [source for source, key in (("mymind", "mymind_cli"), ("readwise-notes", "readwise_cli"),
+                                                            ("readwise-api", "readwise_cli"), ("granola-digests", "granola_digests"))
+                                 if paths.get(key)]
+    with sqlite3.connect(f"file:{database}?mode=ro", uri=True) as conn:
+        last_syncs = dict(conn.execute("SELECT source, last_sync FROM sync_state"))
+    yield from source_freshness(last_syncs, sources, datetime.now(timezone.utc).isoformat())
 
 
 def check_python():
@@ -137,7 +174,7 @@ def check_public():
 def main(argv):
     marks = {"ok": "ok  ", "warn": "warn", "fail": "FAIL"}
     failed = []
-    for check in (check_jobs, check_server, check_keys, check_python, check_git, check_hosted, check_public):
+    for check in (check_jobs, check_server, check_keys, check_sources, check_python, check_git, check_hosted, check_public):
         for level, name, detail in check():
             print(f"{marks[level]}  {name}: {detail}")
             if level == "fail":
