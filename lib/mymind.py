@@ -13,7 +13,8 @@ from lib import db
 ALIASES = {
     "external_id": ("id", "card id", "card uuid", "uuid", "external id"),
     "title": ("title", "name"),
-    "body": ("content", "text", "note", "notes", "quote", "highlight", "description"),
+    "body": ("content", "text", "quote", "highlight", "description"),
+    "owner_note": ("note", "notes"),  # the owner's own words: an owner note (lib/owner_notes.py), not body text
     "url": ("url", "link", "source url", "source link", "bookmark url"),
     "author": ("author", "creator"),
     "tags": ("tags", "tag"),
@@ -21,6 +22,9 @@ ALIASES = {
     "saved_at": ("saved", "saved at", "saved date", "date saved", "added at", "added", "date added", "date"),
     "updated_at": ("updated", "updated at", "updated date", "date updated", "modified at"),
 }
+
+
+EXPORT_NOTE = ":note:csv"  # the end of the owner_notes id for an export's note; the mymind CLI sync never removes it
 
 
 def _header(value):
@@ -75,7 +79,7 @@ def parse_export(path):
             fields = {}
             for field, aliases in ALIASES.items():
                 matches = [normalized.index(alias) for alias in aliases if alias in normalized]
-                if field == "body":
+                if field in ("body", "owner_note"):
                     if matches:
                         fields[field] = matches
                     continue
@@ -91,12 +95,13 @@ def parse_export(path):
                 if len(row) != len(headers):
                     raise ValueError(f"Row {row_number}: column count does not match header.")
                 raw = dict(zip(headers, row))
-                values = {field: row[index].strip() for field, index in fields.items() if field != "body"}
-                bodies = list(dict.fromkeys(row[index] for index in fields.get("body", []) if row[index].strip()))
-                values["body"] = "\n\n".join(bodies)
+                values = {field: row[index].strip() for field, index in fields.items() if field not in ("body", "owner_note")}
+                for field in ("body", "owner_note"):
+                    values[field] = "\n\n".join(dict.fromkeys(row[index] for index in fields.get(field, []) if row[index].strip()))
                 item = {field: values.get(field) or None for field in ("title", "body", "url")}
                 item["author"] = values.get("author") or None
-                if not any(item[field] for field in ("title", "body", "url")):
+                item["owner_note"] = values["owner_note"].strip() or None
+                if not any(item[field] for field in ("title", "body", "url", "owner_note")):
                     raise ValueError(f"Row {row_number}: no title, content or URL.")
                 for field in ("created_at", "saved_at", "updated_at"):
                     item[field] = _date(values.get(field), row_number, field)
@@ -107,7 +112,7 @@ def parse_export(path):
                         identity = [item["url"], item["saved_at"]]
                         identity_kind = "url_saved_at"
                     else:
-                        identity = [item["url"], item["title"], item["body"]]
+                        identity = [item["url"], item["title"], item["body"] or item["owner_note"]]
                         identity_kind = "content"
                     encoded = json.dumps(identity, ensure_ascii=False, separators=(",", ":"))
                     external_id = "sha256:" + hashlib.sha256(encoded.encode("utf-8")).hexdigest()
@@ -170,6 +175,15 @@ def import_export(path, db_path=None, preview=False):
                 item_id = conn.execute(
                     "SELECT id FROM items WHERE source='mymind' AND external_id=?", (item["external_id"],)
                 ).fetchone()["id"]
+                note_id = item["external_id"] + EXPORT_NOTE
+                if item["owner_note"]:
+                    conn.execute(
+                        "INSERT INTO owner_notes (item_id, source, external_id, kind, origin, body, created_at, synced_at) "
+                        "VALUES (?, 'mymind', ?, 'note', 'owner', ?, ?, ?) ON CONFLICT(source, external_id) DO UPDATE SET "
+                        "body=excluded.body, synced_at=excluded.synced_at",
+                        (item_id, note_id, item["owner_note"], item["created_at"], now))
+                else:
+                    conn.execute("DELETE FROM owner_notes WHERE source='mymind' AND external_id=?", (note_id,))
                 for tag in json.loads(item["raw_json"])["source_tags"]:
                     conn.execute("INSERT OR IGNORE INTO tags (name) VALUES (?)", (tag,))
                     conn.execute(

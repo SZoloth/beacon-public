@@ -271,13 +271,15 @@ def build_classification_prompt(items, workstreams):
         body = _escape_item_field((item.get("body") or "")[:300])
         url = _escape_item_field(item.get("url"))
         author = _escape_item_field(item.get("author"))
+        notes = _escape_item_field((item.get("owner_notes") or "")[:300])
         items_text += (
             f'\n<item id="{item["id"]}" source="{source_attr}">\n'
             f"Title: {title}\n"
             f"Body: {body}\n"
             f"URL: {url}\n"
             f"Author: {author}\n"
-            f"</item>\n"
+            + (f"{owner}'s own notes and tags (strongest signal of intent): {notes}\n" if notes else "")
+            + "</item>\n"
         )
 
     return f"""Classify these bookmarked items for {owner}'s project backlogs.

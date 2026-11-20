@@ -2,20 +2,33 @@
 import json
 import os
 import re
+import subprocess
 from contextlib import closing
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from . import db
+from . import db, settings
 
 SAVE_URL = "https://readwise.io/api/v3/save/"
 SECRETS = Path.home() / ".config" / "shell" / "secrets.zsh"
+WITH_SECRET = Path.home() / ".local" / "bin" / "with-secret"
+
+
+def _keychain_token():
+    """The token from Keychain through with-secret; the value stays in this process and is never printed."""
+    if not os.access(WITH_SECRET, os.X_OK):
+        return None
+    done = subprocess.run([str(WITH_SECRET), "READWISE_ACCESS_TOKEN", "--", "/usr/bin/printenv", "READWISE_ACCESS_TOKEN"],
+                          capture_output=True, text=True, timeout=30, check=False)
+    if done.returncode != 0:
+        return None
+    return done.stdout.strip() or None
 
 
 def _token():
-    """The shell exports it; the Triage app and launchd don't run the shell, so read the same file."""
-    token = os.environ.get("READWISE_ACCESS_TOKEN")
+    """The environment first; the app and launchd jobs don't run the shell, so then Keychain, then the old file."""
+    token = os.environ.get("READWISE_ACCESS_TOKEN") or _keychain_token()
     if token:
         return token
     if SECRETS.exists():
@@ -25,17 +38,40 @@ def _token():
     return None
 
 
+def _cli():
+    """The signed-in readwise CLI from config `paths.readwise_cli`, used when the stored token is missing or refused."""
+    path = settings.path("readwise_cli")
+    return path if path and os.access(path, os.X_OK) else None
+
+
+def _save_with_cli(cli, url, tags):
+    done = subprocess.run([cli, "--json", "reader-create-document", "--url", url, "--tags", json.dumps(tags)],
+                          capture_output=True, text=True, timeout=60, check=False)
+    if done.returncode != 0:
+        raise RuntimeError(f"Readwise Reader save failed through the readwise CLI: {done.stderr.strip()[:200]}")
+    try:
+        return json.loads(done.stdout or "{}")
+    except ValueError:
+        raise RuntimeError("Readwise Reader save through the readwise CLI returned no JSON.") from None
+
+
 def _save(url, tags):
-    token = _token()
+    token, cli = _token(), _cli()
     if not token:
-        raise RuntimeError("READWISE_ACCESS_TOKEN is not set; add it to ~/.config/shell/secrets.zsh.")
+        if cli:
+            return _save_with_cli(cli, url, tags)
+        raise RuntimeError("READWISE_ACCESS_TOKEN is not set; store it with `with-secret --add READWISE_ACCESS_TOKEN`.")
     payload = {"url": url, "tags": tags, "saved_using": "Beacon"}
     request = Request(SAVE_URL, data=json.dumps(payload).encode(), method="POST",
                       headers={"Authorization": f"Token {token}", "Content-Type": "application/json"})
     try:
         with urlopen(request, timeout=20) as response:
             return json.loads(response.read() or b"{}")
-    except (HTTPError, URLError, OSError, ValueError) as error:
+    except HTTPError as error:
+        if error.code in (401, 403) and cli:
+            return _save_with_cli(cli, url, tags)
+        raise RuntimeError(f"Readwise Reader save failed: {error}") from None
+    except (URLError, OSError, ValueError) as error:
         raise RuntimeError(f"Readwise Reader save failed: {error}") from None
 
 

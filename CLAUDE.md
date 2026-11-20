@@ -13,7 +13,8 @@ Bookmark & Star Intake System. Syncs X bookmarks and GitHub stars into SQLite, A
 ## Commands
 ```bash
 beacon run                    # full pipeline
-beacon sync [--source x|github|readwise|keep-local|wiki|omnisearch|last30days]  # no flag syncs every enabled source
+beacon sync [--source x|github|readwise|readwise-notes|mymind|granola-digests|keep-local|wiki|omnisearch|last30days]  # no flag syncs every enabled source
+beacon vocab [--json] | set TERM TARGET | unset TERM TARGET | propose [--preview]  # the owner's tags mapped to projects and areas; see docs/owner-notes.md
 beacon import-x PATH [--preview] [--db PATH]  # local x-handoff-v1 file, no network
 beacon import-saves PATH [--preview] [--db PATH]  # local x-saves-v1 or JSONL handoff, no network
 beacon sources [--db PATH]  # live sources and file handoffs; does not fetch
@@ -28,7 +29,8 @@ beacon discover [--dry-run] [--skip-github] [--show-all]
 beacon backfill <workstream> [--dry-run] [--limit N]
 beacon pile decide [--limit N]   # Haiku decides do/read/reference/pass for untriaged saves
 beacon pile release [--per N]   # queue a few Do saves per destination, file references
-beacon pick score --axis X | prepare [--axis X] | round | summary | holdout  # pick-two taste rounds; see docs/pick.md
+beacon pick score --axis X [--rescore] | prepare [--axis X] | round | summary | holdout  # pick-two taste rounds; see docs/pick.md
+beacon calls session | check | undo | summary | rank | redecide  # check Beacon's keep/pass calls; see docs/calls.md
 ```
 
 ## Tests
@@ -37,6 +39,20 @@ scripts/test                 # every test, one class per process, several at a t
 scripts/test test_pick       # one or more modules
 ```
 Same discovery as `python -m unittest discover -s tests`; exit code 0 only when every class passes.
+
+## Landing a PR
+```bash
+scripts/land 42                # main in, roadmap merged row by row, tests (+ hosted tests), push, squash-merge
+scripts/land 43 --after 41 42  # a PR stacked on PRs that already squash-merged
+```
+It works in its own worktree and stops on any other conflict, a failing test or a failed push.
+
+## Installing the apps
+```bash
+app/one/build-mac.sh          # Mac app into ~/Applications
+scripts/install-phone         # iPhone app on the paired phone, with this Mac's Tailscale address built in
+```
+Build the phone app only through `scripts/install-phone`: a plain build has no server address and the phone can't reach the Mac.
 
 ## Key Files
 - `beacon.py` — CLI entry point

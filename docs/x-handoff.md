@@ -26,6 +26,8 @@ Import creates the destination database when it is missing. It does not seed wor
 
 The weekly job uses Keychain credentials when both `BEACON_X_AUTH_TOKEN` and `BEACON_X_CT0` are present in `with-secret`. Add them with `with-secret --add BEACON_X_AUTH_TOKEN` and `with-secret --add BEACON_X_CT0`. Use the hidden prompt for each value. Beacon passes them only to the bookmark fetch, without putting them in command arguments or logs. If either entry is missing, `bird` tries its usual browser-based authentication.
 
+`scripts/x-keys` stores both from the x.com sign-in bird already uses (Safari, then Chrome, then Firefox) without printing them; run it again when the weekly log says the Keychain sign-in stopped working.
+
 ## File
 
 The file is a JSON array of posts, or an object with `format` set to `x-handoff-v1` and a `posts` array.

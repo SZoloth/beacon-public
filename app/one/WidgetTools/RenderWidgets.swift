@@ -29,8 +29,19 @@ struct RenderWidgets {
         precondition(rotating.picture(at: Date(timeIntervalSince1970: 32400))?.id == 1042)
         precondition(BeaconLink(URL(string: "beacon://triage")!) == .triage)
         precondition(BeaconLink(URL(string: "beacon://save/1042")!) == .save(1042))
-        for invalid in ["https://save/1042", "beacon://save/0", "beacon://save/no", "beacon://save/1/2", "beacon://unknown", "beacon://triage?x=1"] {
-            precondition(BeaconLink(URL(string: invalid)!) == nil)
+        let server = URL(string: "http://my-mac.example-tailnet.ts.net:8765")!
+        let pairLink = BeaconLink.pairURL(server: server, key: "k3y-0123456789")!
+        precondition(BeaconLink(pairLink) == .pair(server: server, key: "k3y-0123456789"))
+        precondition(BeaconLink(BeaconLink.pairURL(server: URL(string: "http://100.105.67.64:8765")!, key: "k3y-0123456789")!) != nil)
+        for invalid in ["https://save/1042", "beacon://save/0", "beacon://save/no", "beacon://save/1/2", "beacon://unknown", "beacon://triage?x=1",
+                        "beacon://pair?server=http://evil.example.com:8765&key=k3y-0123456789",
+                        "beacon://pair?server=http://my-mac.example-tailnet.ts.net:8765",
+                        "beacon://pair?key=k3y-0123456789",
+                        "beacon://pair?server=http://my-mac.example-tailnet.ts.net:8765&key=short",
+                        "beacon://pair?server=http://my-mac.example-tailnet.ts.net:8765&key=k3y-0123456789&extra=1",
+                        "beacon://pair?server=http://192.168.1.5:8765&key=k3y-0123456789",
+                        "beacon://pair?server=file:///etc/x.ts.net&key=k3y-0123456789"] {
+            precondition(BeaconLink(URL(string: invalid)!) == nil, invalid)
         }
         try FileManager.default.removeItem(at: file)
 

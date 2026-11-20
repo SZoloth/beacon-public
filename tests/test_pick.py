@@ -36,8 +36,8 @@ class PickBase(unittest.TestCase):
 
     def scores(self, axis, scores):
         with closing(sqlite3.connect(db.DB_PATH)) as conn, conn:
-            conn.executemany("INSERT INTO pick_scores(item_id, axis, score, scored_at) VALUES(?,?,?,'2026-11-12')",
-                             [(i, axis, s) for i, s in scores.items()])
+            conn.executemany("INSERT INTO pick_scores(item_id, axis, score, scored_at, scorer) VALUES(?,?,?,'2026-11-12',?)",
+                             [(i, axis, s, pick.SCORER) for i, s in scores.items()])
 
     def rows(self, sql, *params):
         with closing(sqlite3.connect(db.DB_PATH)) as conn:
@@ -111,22 +111,57 @@ class PickTest(PickBase):
         self.assertEqual(sorted(p["position"] for p in round_["pairs"]), list(range(1, 15)))
         self.assertEqual(len({i for p in round_["pairs"] for i in (p["left"]["id"], p["right"]["id"])}), 28)
 
-    def test_a_round_is_capped_at_twenty_and_mixes_in_foils_from_likes(self):
+    def test_a_round_is_capped_at_twenty_with_no_foils_or_crosses(self):
         self.topics(count=30)
         for t in range(1, 31):
             self.save(t * 10 + 5, source="x-like", status="interest")
         round_ = pick.prepare("working", nearest=topic_neighbours, rng=random.Random(2))
-        kinds = [p["kind"] for p in round_["pairs"]]
-        self.assertEqual(len(kinds), 20)
-        self.assertEqual(kinds.count("foil"), 4)
-        for p in round_["pairs"]:
-            if p["kind"] == "foil":
-                ids = {p["left"]["id"], p["right"]["id"]}
-                like = [i for i in ids if i % 10 == 5]
-                self.assertEqual(len(like), 1)
-                saved = (ids - set(like)).pop()
-                self.assertEqual(saved // 10, like[0] // 10)
-                self.assertEqual(p["left" if p["beacon_guess"] == "left" else "right"]["id"], saved)
+        kinds = {p["kind"] for p in round_["pairs"]}
+        self.assertEqual(len(round_["pairs"]), 20)
+        self.assertEqual(kinds, {"matched"})
+        self.assertFalse([p for p in round_["pairs"] for side in ("left", "right") if p[side]["id"] % 10 == 5])
+        self.assertTrue(pick.current()["fresh"])
+
+    def test_rounds_use_only_scores_from_the_current_scorer(self):
+        self.topics(count=14)
+        with closing(sqlite3.connect(db.DB_PATH)) as conn, conn:
+            conn.execute("UPDATE pick_scores SET scorer = NULL")
+        with self.assertRaisesRegex(RuntimeError, "--rescore"):
+            pick.prepare("working", nearest=topic_neighbours)
+
+    def test_the_scorer_says_reactions_art_music_bare_links_and_jokes_do_not_apply(self):
+        for word in ("reactions", "art", "music", "bare link", "jokes"):
+            self.assertIn(word, pick.PROMPT)
+
+    def test_rescore_replaces_scores_an_older_scorer_made(self):
+        for i in (1, 2, 3):
+            self.save(i)
+        with closing(sqlite3.connect(db.DB_PATH)) as conn, conn:
+            conn.execute("INSERT INTO pick_scores(item_id, axis, score, scored_at) VALUES(1, 'working', 0.9, 'x')")
+            conn.execute("INSERT INTO pick_scores(item_id, axis, score, scored_at, scorer) VALUES(2, 'working', 0.9, 'x', ?)",
+                         (pick.SCORER,))
+        sent = []
+
+        def judge(items, axis):
+            sent.append(sorted(i["id"] for i in items))
+            return [{"item_id": i["id"], "applies": False, "score": 0} for i in items], 0.0
+
+        pick.score("working", 10, judge=judge)
+        self.assertEqual(sent, [[3]])
+        pick.score("working", 10, judge=judge, rescore=True)
+        self.assertEqual(sent[-1], [1])
+        self.assertEqual(self.rows("SELECT item_id, score, scorer FROM pick_scores ORDER BY item_id"),
+                         [(1, None, pick.SCORER), (2, 0.9, pick.SCORER), (3, None, pick.SCORER)])
+
+    def test_about_the_same_is_an_answer_and_each_kind_has_its_question(self):
+        self.topics()
+        round_ = pick.prepare("working", nearest=topic_neighbours, rng=random.Random(3))
+        self.assertTrue(all(p["question"] == pick.AXES["working"]["question"] for p in round_["pairs"]))
+        result = pick.record(round_["round_id"], 1, "same")
+        self.assertEqual(result["beacon_guess"], round_["pairs"][0]["beacon_guess"])
+        self.assertEqual(self.rows("SELECT choice FROM pick_log"), [("same",)])
+        self.assertEqual(pick.summary()["axes"]["working"]["same"], 1)
+        self.assertEqual(pick.summary()["axes"]["working"]["decisive"], 0)
 
     def test_too_few_scored_saves_is_an_error_not_a_thin_round(self):
         self.topics(count=3)
@@ -401,7 +436,7 @@ class PickServerTest(PickBase):
         status, payload = self.route("GET", "/pick/round")
         self.assertEqual((status, payload["round_id"]), (200, round_["round_id"]))
         self.assertEqual(self.route("POST", "/pick", {"round_id": round_["round_id"], "position": 1, "choice": "skip"}),
-                         (200, {"ok": True, "next_position": 2}))
+                         (200, {"ok": True, "next_position": 2, "beacon_guess": round_["pairs"][0]["beacon_guess"]}))
         self.assertEqual(self.route("POST", "/pick/undo", {"round_id": round_["round_id"]}), (200, {"position": 1}))
         status, summary = self.route("GET", "/pick/summary")
         self.assertEqual(status, 200)
@@ -451,7 +486,7 @@ class PickCommandTest(PickBase):
         rid = str(round_["round_id"])
         self.assertEqual(self.run_cli("record", "--round", rid, "--position", "1", "--choice", "left",
                                       "--why", "real numbers", "--shown-at", "2026-11-19T10:00:00+00:00"),
-                         {"ok": True, "next_position": 2})
+                         {"ok": True, "next_position": 2, "beacon_guess": round_["pairs"][0]["beacon_guess"]})
         self.assertEqual([tuple(r) for r in self.rows("SELECT position, choice, why, shown_at FROM pick_log")],
                          [(1, "left", "real numbers", "2026-11-19T10:00:00+00:00")])
         self.assertEqual(self.run_cli("undo", "--round", rid), {"position": 1})

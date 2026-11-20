@@ -1,0 +1,30 @@
+#!/bin/zsh
+# Copy the X sign-in that bird uses (Safari's x.com cookies) into Keychain as BEACON_X_AUTH_TOKEN and
+# BEACON_X_CT0, so the Monday launchd job can sync X bookmarks: launchd jobs can't read Safari's cookies.
+# Values go from the cookie store straight into `with-secret --add` on stdin; nothing is printed.
+# Run it again whenever the weekly log says the Keychain credentials stopped working.
+set -euo pipefail
+bird=$(/usr/bin/readlink -f "$(command -v bird)")
+cookies="${bird:h:h}/node_modules/@steipete/sweet-cookie/dist/public.js"
+[[ -f $cookies ]] || { echo "x-keys: bird's cookie library wasn't found next to $bird" >&2; exit 1; }
+
+node --input-type=module - "$cookies" <<'EOF'
+import { spawnSync } from "node:child_process";
+const { getCookies } = await import(process.argv[2]);
+// Both cookies must come from one browser: a token from one session and a ct0 from another don't sign in.
+let pairs;
+for (const browser of ["safari", "chrome", "firefox"]) {
+  const { cookies } = await getCookies({ url: "https://x.com", names: ["auth_token", "ct0"], browsers: [browser] });
+  const value = (name) => cookies.find((c) => c.name === name)?.value;
+  if (value("auth_token") && value("ct0")) { pairs = [["BEACON_X_AUTH_TOKEN", value("auth_token")], ["BEACON_X_CT0", value("ct0")]]; break; }
+}
+if (!pairs) {
+  console.error("x-keys: no x.com sign-in found in Safari, Chrome or Firefox. Sign in to x.com in Safari and run this again.");
+  process.exit(1);
+}
+for (const [name, secret] of pairs) {
+  const add = spawnSync(`${process.env.HOME}/.local/bin/with-secret`, ["--add", name], { input: secret, stdio: ["pipe", "ignore", "inherit"] });
+  if (add.status !== 0) { console.error(`x-keys: storing ${name} failed`); process.exit(1); }
+}
+console.log("Stored BEACON_X_AUTH_TOKEN and BEACON_X_CT0 in Keychain.");
+EOF

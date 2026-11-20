@@ -123,6 +123,7 @@ def _picked(conn, held_out):
 
 def examples(*, picks=True, held_out=()):
     """The owner's own decisions, newest choice per save: kept or passed, where it was routed, and its text.
+    Their checks of Beacon's calls in Calls count, confirmations as much as changes.
 
     Autopilot's actions are Beacon's, not theirs, unless they undid one (then they kept it). With `picks`, their
     side-by-side choices in Pick are examples too, except the pick_log ids in `held_out` (the holdout check)."""
@@ -137,8 +138,15 @@ def examples(*, picks=True, held_out=()):
                 choice[r["id"]] = "kept"
             elif r["status"] in ("adopted", "rejected") and not _beacon_acted(conn, r["id"]):
                 choice[r["id"]] = "kept" if r["status"] == "adopted" else "passed"
-        for r in conn.execute("SELECT item_id, choice FROM choice_log WHERE source = 'you' ORDER BY id"):
-            choice[r["item_id"]] = "passed" if r["choice"] == "rejected" else "kept"
+        # Your Triage choices and your checks of Beacon's calls (lib/calls.py), oldest first so the newest wins.
+        # A check counts whether it agreed with Beacon or changed the call; can't-tell and undone checks don't.
+        yours = [(r["chosen_at"] or "", r["item_id"], "passed" if r["choice"] == "rejected" else "kept")
+                 for r in conn.execute("SELECT item_id, choice, chosen_at FROM choice_log WHERE source = 'you' ORDER BY id")]
+        yours += [(r["checked_at"], r["item_id"], "kept" if r["your_outcome"] == "keep" else "passed")
+                  for r in conn.execute("SELECT item_id, your_outcome, checked_at FROM call_checks "
+                                        "WHERE voided_at IS NULL AND your_outcome IS NOT NULL ORDER BY id")]
+        for _, item_id, decided in sorted(yours, key=lambda row: row[0]):
+            choice[item_id] = decided
         if picks:
             for item_id, side in _picked(conn, set(held_out)).items():
                 choice[item_id] = f"{choice[item_id]}, and {side}" if item_id in choice else side

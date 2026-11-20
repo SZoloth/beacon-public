@@ -23,6 +23,7 @@ if [[ -x "$HOME/.local/bin/with-secret" ]] &&
   keychain_sync=1
 fi
 BEACON_X_KEYCHAIN="$keychain_sync" python3 beacon.py sync || sync_ok=0
+[[ $keychain_sync == 1 ]] || echo "X sync used no Keychain sign-in; run scripts/x-keys once so the Monday job can reach X."
 
 TYPESAFE_API_KEY="${TYPESAFE_API_KEY:-$(/usr/bin/security find-generic-password -s typesafe-personal-dev -a "${TYPESAFE_KEYCHAIN_ACCOUNT:-$USER}" -w 2>/dev/null)}"
 if [[ -z "$TYPESAFE_API_KEY" ]]; then
@@ -34,6 +35,8 @@ python3 beacon.py classify --provider typesafe --allow-upload --limit 1000 \
   --routing-evaluation runs/2026-09-20-routing/live-v2.json --since "$(date -u -v-90d +%Y-%m-%d)" | python3 -c \
   'import json,sys; d=json.load(sys.stdin); print("scored", d["live_model_calls"], "held", d["held"], "errors", d["errors"], "cost_usd", round(d["estimated_cost_usd"], 4))' || failed+=(classify)
 python3 beacon.py areas --allow-upload --limit 1000 || failed+=(areas)
+# Owner tags no project or area names: a model proposes where they point, sent only when a term or a project is new.
+python3 beacon.py vocab propose || failed+=(vocab)
 unset TYPESAFE_API_KEY
 
 python3 beacon.py route-top || failed+=(route-top)

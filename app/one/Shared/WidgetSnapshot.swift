@@ -48,12 +48,48 @@ struct WidgetSnapshot: Codable {
 
 enum BeaconLink: Equatable {
     case triage, save(Int)
+    /// From the Mac's Pair iPhone QR code. Both values travel together, and the server must be on
+    /// the tailnet, so a stray link can't point the phone (and its key) somewhere else.
+    case pair(server: URL, key: String)
 
     init?(_ url: URL) {
-        guard url.scheme == "beacon", url.query == nil, url.fragment == nil else { return nil }
+        guard url.scheme == "beacon", url.fragment == nil else { return nil }
+        if url.host == "pair", url.path.isEmpty || url.path == "/" {
+            guard let pair = Self.pairing(url) else { return nil }
+            self = pair
+            return
+        }
+        guard url.query == nil else { return nil }
         if url.host == "triage", url.path.isEmpty || url.path == "/" { self = .triage }
         else if url.host == "save", url.pathComponents.count == 2,
                 let id = Int(url.lastPathComponent), id > 0 { self = .save(id) }
         else { return nil }
+    }
+
+    private static func pairing(_ url: URL) -> BeaconLink? {
+        guard let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+              Set(items.map(\.name)) == ["server", "key"], items.count == 2,
+              let serverText = items.first(where: { $0.name == "server" })?.value,
+              let key = items.first(where: { $0.name == "key" })?.value,
+              (8...200).contains(key.count), key.allSatisfy({ !$0.isWhitespace }),
+              let server = URL(string: serverText), ["http", "https"].contains(server.scheme ?? ""),
+              let host = server.host, isTailnet(host) else { return nil }
+        return .pair(server: server, key: key)
+    }
+
+    /// A MagicDNS name (*.ts.net) or a Tailscale address (100.64.0.0/10).
+    static func isTailnet(_ host: String) -> Bool {
+        if host.hasSuffix(".ts.net") { return true }
+        let parts = host.split(separator: ".").compactMap { Int($0) }
+        return parts.count == 4 && parts[0] == 100 && (64...127).contains(parts[1]) && parts.allSatisfy { (0...255).contains($0) }
+    }
+
+    /// The link the Mac's QR code carries.
+    static func pairURL(server: URL, key: String) -> URL? {
+        var components = URLComponents()
+        components.scheme = "beacon"
+        components.host = "pair"
+        components.queryItems = [URLQueryItem(name: "server", value: server.absoluteString), URLQueryItem(name: "key", value: key)]
+        return components.url
     }
 }

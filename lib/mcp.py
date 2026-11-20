@@ -11,10 +11,11 @@ import json
 import sys
 import time
 import uuid
+from contextlib import closing
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
-from . import adds, db, references, settings, useful, vectors
+from . import adds, db, references, settings, useful, vectors, vocabulary
 
 PROTOCOL = "2025-06-18"
 CONFIG = Path(settings.config_path())
@@ -39,8 +40,9 @@ _SHELF = {"type": "string", "description": "File the save on this area slug (see
                                            "is kept with no shelf."}
 TOOLS = [
     {"name": "search_library",
-     "description": f"Search {OWNER}'s saved posts, pictures and links, best match first. mode 'words' matches the post "
-                    "and what Beacon wrote about it (takeaway, tags), in any word form; 'both' also ranks by meaning. "
+     "description": f"Search {OWNER}'s saved posts, pictures and links, best match first. mode 'words' matches the post, "
+                    f"what Beacon wrote about it (takeaway, tags) and {OWNER}'s own notes and tags on it (owner_notes), "
+                    "in any word form; 'both' also ranks by meaning. "
                     "Mode 'meaning' finds pictures "
                     "that show what you describe (on-device SigLIP), even when the post never says it. Inside one "
                     "of your projects, call project_references first. Returns picture links: open "
@@ -53,7 +55,8 @@ TOOLS = [
                                             "save is right and you want more like it. A save with no picture "
                                             "finds nothing.",
      "inputSchema": {"type": "object", "required": ["id"], "properties": {"id": {"type": "integer"}, "limit": _LIMIT, "offset": _OFFSET}}},
-    {"name": "get_save", "description": "One save in full: text, link, author, shelf and picture links. Request images "
+    {"name": "get_save", "description": "One save in full: text, link, author, shelf, the owner's own notes and tags (tag_targets: the projects and "
+                                        "areas each tag points at, and how: literal name, owner, or model), and picture links. Request images "
                                         "to see up to four pictures, including the still image for a video.",
      "inputSchema": {"type": "object", "required": ["id"], "properties": {
          "id": {"type": "integer"}, "project": {"type": "string", "description": "Use the project slug returned by "
@@ -72,7 +75,9 @@ TOOLS = [
                                                            "post text to TypeSafe. Default false."}}}},
     {"name": "project_references",
      "description": f"Call this first when planning work in one of {OWNER}'s projects. Pass your working directory as "
-                    f"folder. Returns the saves {OWNER} filed as references or kept for that project. With a task, "
+                    f"folder. Returns the saves {OWNER} filed as references or kept for that project, then saves "
+                    f"whose own notes or tags (owner_notes) name it (filed: noted), the strongest sign of what {OWNER} "
+                    "meant. A note with origin owner_digest is a model's summary of what they said. With a task, "
                     "returns only word matches and explains each match. Cite the saves you use.",
      "inputSchema": {"type": "object", "properties": {
          "folder": {"type": "string", "description": "Your working directory. The project whose root holds it is used "
@@ -91,6 +96,7 @@ TOOLS = [
 
 
 MAX_PICTURES = 4  # an X post carries at most four
+MAX_NOTES = 5  # owner notes per save in a list; get_save shows them all
 MAX_PICTURE = 1_000_000  # bytes; a phone photo or an X "small" rendition fits, a raw 12 MP export doesn't
 _IMAGE_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp"}
 
@@ -103,14 +109,17 @@ def _picture(url):
     return str(adds.MEDIA_DIR / url.removeprefix("/media/")) if url.startswith("/media/") else url
 
 
-def _save(entry, full=False):
+def _save(entry, full=False, every_note=False):
     text = entry["text"] if full else entry["text"][:400]
     # The cleaned post text reads better than X's raw title, which is often just a t.co link.
     title = (entry["text"].split("\n")[0][:120] or db._TCO.sub("", entry["title"] or "").strip()
              or f"Picture from {entry['author_name'] or entry['author'] or 'X'}")
+    notes = entry["owner_notes"] if every_note else entry["owner_notes"][:MAX_NOTES]
+    more = len(entry["owner_notes"]) - len(notes)
     return {"id": entry["id"], "source": entry["source"], "title": title, "text": text, "url": entry["url"],
             "author": entry["author_name"] or entry["author"], "shelf": entry["area"], "date": entry["date"],
-            "pictures": [_picture(m["url"]) for m in entry["media"]]}
+            "pictures": [_picture(m["url"]) for m in entry["media"]], "owner_notes": notes,
+            **({"owner_notes_more": more} if more else {})}
 
 
 def _small(url):
@@ -179,9 +188,15 @@ def _shelf(arguments):
     return shelf
 
 
+def _client_saves():
+    """Saves whose owner notes tie them to client work: no tool lists them, since a call carries no project."""
+    with closing(db.get_connection()) as conn:
+        return references.client_saves(conn)
+
+
 def _ranked(found, arguments, shelf=None):
     page = db.get_library(limit=_limit(arguments), offset=_offset(arguments), area=shelf,
-                          ranked=[item_id for item_id, _ in found])
+                          ranked=[item_id for item_id, _ in found], hide=_client_saves())
     return {"saves": [_save(entry) for entry in page["items"]], "total": page["total"], "next_offset": page["next_offset"]}
 
 
@@ -202,13 +217,15 @@ def _call(name, arguments):
             raise ToolError("query is empty")
         if mode == "both":
             ranked, answered = vectors.search(query)
-            page = db.get_library(limit=_limit(arguments), offset=_offset(arguments), area=shelf, ranked=ranked)
+            page = db.get_library(limit=_limit(arguments), offset=_offset(arguments), area=shelf, ranked=ranked,
+                                  hide=_client_saves())
             return {"saves": [_save(entry) for entry in page["items"]], "total": page["total"],
                     "next_offset": page["next_offset"], "searched": answered}
         if mode == "meaning":
             found = _ranked(vectors.meaning(query), arguments, shelf)
         elif mode == "words":
-            page = db.get_library(limit=_limit(arguments), offset=_offset(arguments), area=shelf, query=query)
+            page = db.get_library(limit=_limit(arguments), offset=_offset(arguments), area=shelf, query=query, noted=True,
+                                  hide=_client_saves())
             found = {"saves": [_save(entry) for entry in page["items"]], "total": page["total"], "next_offset": page["next_offset"]}
         else:
             raise ToolError("mode must be 'words', 'meaning' or 'both'")
@@ -223,10 +240,13 @@ def _call(name, arguments):
         if project:
             found = references.for_project(project, item_id=item_id)["saves"]
         else:
-            found = db.get_library(ranked=[item_id])["items"]
+            found = db.get_library(ranked=[item_id], noted=True)["items"]
         if not found:
             raise ToolError(f"no save with id {item_id} in " + (f"project {project}" if project else "the library"))
-        save = _save(found[0], full=True)
+        save = _save(found[0], full=True, every_note=True)
+        with closing(db.get_connection()) as conn:
+            save["tag_targets"] = vocabulary.resolve(conn, [note["body"] for note in save["owner_notes"]
+                                                            if note["kind"] == "tag" and note["origin"] == "owner"])
         return {**save, "_content": _pictures(save) if arguments.get("pictures") is True else []}
     if name == "list_shelves":
         areas = json.loads(CONFIG.read_text()).get("areas", [])

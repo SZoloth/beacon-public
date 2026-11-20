@@ -68,11 +68,15 @@ private actor FakeBackend: Backend {
     func activate(itemId: Int) async throws -> Activation? { nil }
     func answer(activation id: Int, text: String) async throws -> Activation? { nil }
     func close(activation id: Int, as state: String) async throws -> Activation { throw URLError(.unsupportedURL) }
-    func pickRound() async throws -> PickRound { throw URLError(.unsupportedURL) }
+    func callSession(size: Int, new: Bool) async throws -> CallSession { throw URLError(.unsupportedURL) }
+    func checkCall(session: LooseID, card: LooseID, answer: String, destination: String?, chip: String?) async throws -> CallCheck {
+        throw URLError(.unsupportedURL)
+    }
+    func undoCall(change: LooseID) async throws {}
+    func redecide(group: String) async throws {}
+    func callSummary(session: LooseID?) async throws -> CallSummary { throw URLError(.unsupportedURL) }
     func pick(round id: Int, position: Int, choice: String, why: String?, shownAt: String?) async throws -> Int? { nil }
     func undoPick(round id: Int) async throws -> Int? { nil }
-    func preparePick(axis: String?) async throws -> Bool { false }
-    func pickSummary() async throws -> PickSummary { throw URLError(.unsupportedURL) }
 }
 
 /// A queued save on a code project that Beacon suggests doing.

@@ -66,6 +66,8 @@ targets:
       path: build/Info-ios.plist
       properties:
         CFBundleDisplayName: Beacon ✦
+        # The owner's Mac, filled at build time by scripts/install-phone; empty in public builds.
+        BeaconDefaultServer: $(BEACON_DEFAULT_SERVER)
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         CFBundleURLTypes:
@@ -81,6 +83,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.beacon-one
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1"
+        BEACON_DEFAULT_SERVER: ""
     entitlements:
       path: build/BeaconPhone.entitlements
       properties:

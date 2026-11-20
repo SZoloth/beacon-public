@@ -140,7 +140,7 @@ def _fetch_bird_bookmark_page(cursor=None):
     )
     if result.returncode != 0:
         if keychain:
-            print("  bird could not fetch X bookmarks using the configured Keychain credentials.")
+            print("  bird could not fetch X bookmarks with the Keychain sign-in; run scripts/x-keys to refresh it.")
         elif result.stderr.strip():
             print(f"  bird error: {result.stderr.strip()}")
         if not result.stdout.strip():

@@ -6,6 +6,7 @@ Pick shows two of your own saves and asks which one you would rather have saved,
 
 ```bash
 python3 beacon.py pick score --axis working --limit 600   # Haiku scores saves on one axis, 15 per call
+python3 beacon.py pick score --axis working --limit 3000 --rescore  # also replace scores an older prompt made
 python3 beacon.py pick prepare [--axis working]           # build the next round (default: least settled axis)
 python3 beacon.py pick round                              # current round and your picks so far, as JSON
 python3 beacon.py pick summary                            # per-axis lean, for you to read
@@ -18,7 +19,9 @@ Scoring costs about the same as `pile decide`: roughly $0.20 per 1,000 saves per
 
 ## Axes
 
-Each axis is a line of the taste map v1. Haiku scores a save 1 toward the keep pole and 0 toward the other. When the axis doesn't fit (jokes, sports, a bare link), the save is stored with no score and is never paired.
+Each axis is a line of the taste map v1. Haiku scores a save 1 toward the keep pole and 0 toward the other. When the axis doesn't fit, the save is stored with no score and is never paired. Since Nov 19 (scorer 2) that rule is strict. Reactions, art, illustration, photography, music, bare links, unreadable pictures, jokes, memes, sports, news and personal posts don't apply, and Haiku says "doesn't apply" when in doubt. Each score records the scorer that made it, and rounds use only scores from the current scorer. `--rescore` replaces older ones.
+
+Rescoring the 40 saves in round 1 on a copy of the database cost $0.004. Under scorer 1, 14 of its 20 pairs were same-topic matched pairs. Under scorer 2, 4 of those 14 still differ by 0.5 with both sides applying. The other 10 lost a side that doesn't apply, such as a self-portrait, a recorder tune or a playlist, or the gap shrank.
 
 | Axis | Question | Map line |
 | --- | --- | --- |
@@ -33,23 +36,23 @@ Each axis is a line of the taste map v1. Haiku scores a save 1 toward the keep p
 
 Up to 20 pairs, at least 10, in random order with random sides:
 
-- **repeat** (up to 2): an earlier decided pair with the sides swapped, so you can see whether you agree with yourself.
-- **foil** (up to 4): a scored save against a same-topic X like you never bookmarked, or against a save the pile run passed. Beacon's guess is the save.
-- **cross** (up to 2): two saves filed to different projects or areas.
+- **repeat** (up to 2): an earlier decided pair with the sides swapped, so you can see whether you agree with yourself. It asks the same axis question as the first time.
 - **matched** (the rest): two same-topic saves whose axis scores differ by at least 0.5. Saves you haven't seen in Pick come first.
+
+Foils and cross pairs are retired (Nov 19). A save the pile run passed is now a card in Calls ([docs/calls.md](calls.md)). Older rounds still hold them, and each pair carries the question for its kind. A Calls session ends with two pairs from the current round: one matched and one repeat. It serves them only when the round was built by the current scorer (`fresh: true` in `GET /pick/round`).
 
 If the embedding model fails, no round is built. A round without topic matching would measure topic, not taste.
 
 ## Picks
 
-`choice` is `left`, `right`, `neither` (both are a pass) or `skip` (can't tell). `why` is empty or one of the round's three chips, tapped by you. Beacon never writes an inferred reason. Recording the same position again changes the pick, and Back removes the last one. Every row has origin `you-deliberate`.
+`choice` is `left`, `right`, `same` (about the same), `neither` (both are a pass) or `skip` (can't tell). `same` is a real answer but not a decisive one, and it adds no example. `why` is empty or one of the round's three chips, tapped by you. Beacon never writes an inferred reason. Recording the same position again changes the pick, and Back removes the last one. Every row has origin `you-deliberate`.
 
 ## Phone and Mac
 
 `beacon serve` answers these directly, with the same access key as `/mark`:
 
 - `GET /pick/round` returns the current round with cards (id, author, text, takeaway, url, has_media) and your picks so far, or `round_id: null` with the reason. `preparing` is true while a round is being built.
-- `POST /pick` takes `{round_id, position, choice, why?, shown_at?}` and returns `{ok, next_position}`. `next_position` is null once the round is done.
+- `POST /pick` takes `{round_id, position, choice, why?, shown_at?}` and returns `{ok, next_position, beacon_guess}`. `next_position` is null once the round is done. `beacon_guess` (`left`, `right` or `none`) is shown only after you pick.
 - `POST /pick/undo` takes `{round_id}` and returns `{position}`, the pick it removed.
 - `POST /pick/prepare` takes `{axis?}` and returns `{started, preparing}` at once. Building a round takes a few minutes, so poll `GET /pick/round` until `preparing` is false. If the build failed, the round's `reason` says why, for example that the axis needs `beacon pick score` first. Only one build runs at a time; a second call returns `started: false`.
 - `GET /pick/summary` returns the per-axis lean.

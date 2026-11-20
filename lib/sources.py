@@ -4,7 +4,7 @@ import os
 import sqlite3
 
 
-LIVE_ORDER = ("x", "github", "keep-local", "wiki", "omnisearch", "last30days", "readwise")
+LIVE_ORDER = ("x", "github", "keep-local", "wiki", "omnisearch", "last30days", "readwise", "mymind", "readwise-notes", "granola-digests")
 
 HANDOFFS = (
     {
@@ -21,7 +21,7 @@ HANDOFFS = (
         "live": False,
         "command": "beacon import-mymind PATH",
         "checkpoint_key": None,
-        "note": "Local cards.csv import. Not a sync source.",
+        "note": "Local cards.csv import. The live source is beacon sync --source mymind, which reads the owner's tags and notes through the mymind CLI.",
     },
     {
         "name": "x-handoff",

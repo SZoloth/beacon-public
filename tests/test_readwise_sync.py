@@ -1,4 +1,5 @@
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -46,7 +47,7 @@ class ReadwiseSyncTests(unittest.TestCase):
             "readwise": {"reader_id": "dropped", "reader_saved_at": "2024-01-01T00:00:00Z", "reader_source": ""},
         }) + "\n", encoding="utf-8")
         opener = mock.Mock(side_effect=AssertionError("Reader was called"))
-        with self.assertRaises(RuntimeError) as raised:
+        with mock.patch.object(readwise_sync.reader, "_cli", return_value=None), self.assertRaises(RuntimeError) as raised:
             readwise_sync.fetch_readwise(count=10, handoff_dir=str(folder), db_path=str(self.database), token="", opener=opener)
         self.assertIn("Auth was not tested", str(raised.exception))
         opener.assert_not_called()
@@ -56,6 +57,35 @@ class ReadwiseSyncTests(unittest.TestCase):
         finally:
             conn.close()
         self.assertEqual(row["status"], "pending")
+
+    def test_the_signed_in_readwise_cli_lists_reader_tweets_without_a_token(self):
+        ran = []
+
+        def fake_run(command, **_):
+            ran.append(command)
+            return subprocess.CompletedProcess(command, 0, json.dumps({"results": [], "nextPageCursor": None}), "")
+        with mock.patch.object(readwise_sync.reader, "_cli", return_value="/bin/readwise"), \
+             mock.patch.object(readwise_sync.subprocess, "run", side_effect=fake_run):
+            result = readwise_sync.fetch_readwise(count=10, db_path=str(self.database), token="")
+        self.assertTrue(result["auth_tested"])
+        self.assertEqual(ran[0][:7], ["/bin/readwise", "--json", "reader-list-documents", "--category", "tweet", "--limit", "100"])
+        self.assertEqual(ran[0][7], "--response-fields")
+        self.assertIn("html_content", json.loads(ran[0][8]), "the CLI leaves the tweet's text out unless asked")
+
+    def test_a_failed_cli_list_is_retried_with_a_refreshed_tool_cache(self):
+        ran = []
+
+        def fake_run(command, **_):
+            ran.append(command)
+            if len(ran) == 1:
+                return subprocess.CompletedProcess(command, 1, "", "Error listing documents from Reader")
+            return subprocess.CompletedProcess(command, 0, json.dumps({"results": [], "nextPageCursor": None}), "")
+        with mock.patch.object(readwise_sync.subprocess, "run", side_effect=fake_run), \
+             mock.patch.object(readwise_sync.time, "sleep") as slept:
+            self.assertEqual(readwise_sync._open_cli("/bin/readwise", readwise_sync._list_url("", ""), ""),
+                             {"results": [], "nextPageCursor": None})
+        self.assertEqual([command[1] for command in ran], ["--json", "--refresh"])
+        slept.assert_called_once()
 
     def test_list_pages_checkpoint_and_hydration_promotes_pending(self):
         calls = []

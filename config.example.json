@@ -5,7 +5,10 @@
   },
   "paths": {
     "live_db": "~/beacon/beacon.db",
-    "reading_inbox": "~/beacon/reading-inbox.md"
+    "reading_inbox": "~/beacon/reading-inbox.md",
+    "mymind_cli": "",
+    "readwise_cli": "",
+    "granola_digests": ""
   },
   "workstreams": [
     {
@@ -30,6 +33,15 @@
       "category": "tweet",
       "default_count": 200,
       "handoff_dir": "handoffs/readwise"
+    },
+    "mymind": {
+      "method": "mymind_cli"
+    },
+    "readwise-notes": {
+      "method": "readwise_cli"
+    },
+    "granola-digests": {
+      "method": "digest_folder"
     }
   },
   "practices": [],

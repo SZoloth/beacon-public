@@ -40,11 +40,11 @@ def _strip_code_fences(output):
     return output
 
 
-def run_json_prompt_result(prompt, timeout=120):
-    """Run a JSON-only prompt and return a structured outcome dict."""
+def run_json_prompt_result(prompt, timeout=120, runners=None):
+    """Run a JSON-only prompt and return a structured outcome dict. `runners` overrides BEACON_AI_RUNNERS."""
     env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
     errors = []
-    runners = _runner_order()
+    runners = runners or _runner_order()
     available = [r for r in runners if _consecutive_failures.get(r, 0) < _CIRCUIT_THRESHOLD]
     if not available:
         available = runners

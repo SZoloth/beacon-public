@@ -12,8 +12,10 @@
 //   beacon-embed search --db PATH --query TEXT [--limit N]    both meanings from one encode:
 //                                         {"pictures": [[id, score], ...], "words": [[id, score], ...]}
 //   beacon-embed similar --db PATH --id ID [--limit N]        pictures that look like item ID: [[id, score], ...]
+//   beacon-embed names --db PATH --ids 1,2,3 [--top N]   what each picture shows, from its stored vector and
+//                                         Vision's everyday names: {"1": [[name, score], ...], ...}
 //   beacon-embed serve --db PATH          Stays running (for `beacon serve`): one JSON request per stdin line,
-//                                         {"meaning": TEXT}, {"search": TEXT} or {"similar": ID}, plus "limit"; one JSON answer
+//                                         {"meaning": TEXT}, {"search": TEXT}, {"names": [ID]} or {"similar": ID}, plus "limit" (or "top"); one JSON answer
 //                                         per line. The model and vectors stay loaded, so an answer takes
 //                                         milliseconds; vectors reload when the index changes.
 //
@@ -270,6 +272,7 @@ func emit(_ value: Any) {
 func serve(database: Database, siglip: SigLIP) {
     var version: Int64?
     var texts: [(Int, [Float])] = [], images: [(Int, [Float])] = [], words: [(Int, [Float])] = []
+    var namer: Namer?  // made on the first "names" request: about 1,300 short encodes
     while let line = readLine() {
         do {
             guard let request = try JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any] else {
@@ -288,10 +291,13 @@ func serve(database: Database, siglip: SigLIP) {
             } else if let query = request["search"] as? String, !query.trimmingCharacters(in: .whitespaces).isEmpty {
                 let vector = try siglip.embed(text: query)
                 emit(["pictures": rank(vector, against: texts, limit: limit), "words": rank(vector, against: words, limit: limit)])
+            } else if let ids = request["names"] as? [Int] {
+                if namer == nil { namer = try Namer.load(siglip) }
+                emit(namer!.name(ids: ids, in: texts, top: request["top"] as? Int ?? 5))
             } else if let id = request["similar"] as? Int {
                 emit(images.first { $0.0 == id }.map { rank($0.1, against: images, limit: limit, skip: id) } ?? [])
             } else {
-                throw Failure(description: "send {\"meaning\": text}, {\"search\": text} or {\"similar\": id}")
+                throw Failure(description: "send {\"meaning\": text}, {\"search\": text}, {\"names\": [id]} or {\"similar\": id}")
             }
         } catch {
             emit(["error": "\(error)"])
@@ -299,11 +305,49 @@ func serve(database: Database, siglip: SigLIP) {
     }
 }
 
+// MARK: Names for what a picture shows
+
+/// A few words on what each picture shows, for readers that can't see pictures (the judge and composer in
+/// runs/2026-11-19-arrange-r3). Nothing is downloaded again: the stored SigLIP picture vector is compared with the text vector of
+/// each name in Apple Vision's everyday list (about 1,300 things: "armchair", "kitchen countertop",
+/// "illustrations", "screenshot"), and the closest names win. The list is fixed, so a name never comes from
+/// the search that found the picture.
+struct Namer {
+    let names: [String]
+    let vectors: [[Float]]
+
+    static func load(_ siglip: SigLIP) throws -> Namer {
+        var names: [String] = [], vectors: [[Float]] = [], seen = Set<String>()
+        for identifier in try VNClassifyImageRequest().supportedIdentifiers() {
+            let name = identifier.replacingOccurrences(of: "_other", with: "").replacingOccurrences(of: "_", with: " ")
+            guard seen.insert(name).inserted else { continue }
+            names.append(name)
+            vectors.append(try siglip.embed(text: "a photo of \(name)"))
+        }
+        return Namer(names: names, vectors: vectors)
+    }
+
+    /// {"ID": [[name, score], ...]} for each id with a picture vector, best name first.
+    func name(ids: [Int], in pictures: [(Int, [Float])], top: Int) -> [String: [[Any]]] {
+        let wanted = Set(ids)
+        var answer: [String: [[Any]]] = [:]
+        for (id, picture) in pictures where wanted.contains(id) {
+            let scored = vectors.enumerated().map { index, vector -> (Int, Float) in
+                var dot: Float = 0
+                vDSP_dotpr(picture, 1, vector, 1, &dot, vDSP_Length(picture.count))
+                return (index, dot)
+            }
+            answer[String(id)] = scored.sorted { $0.1 > $1.1 }.prefix(top).map { [names[$0.0], Double($0.1)] }
+        }
+        return answer
+    }
+}
+
 // MARK: - Main
 
 do {
     guard let command = CommandLine.arguments.dropFirst().first, let path = argument("--db") else {
-        throw Failure(description: "usage: beacon-embed index|meaning|search|similar --db PATH ...")
+        throw Failure(description: "usage: beacon-embed index|meaning|search|names|similar --db PATH ...")
     }
     let database = try Database(path: path)
     let limit = argument("--limit").flatMap(Int.init) ?? 200
@@ -323,6 +367,10 @@ do {
         let vector = try await SigLIP.load().embed(text: query)
         emit(["pictures": rank(vector, against: database.vectors("text_vec"), limit: limit),
               "words": rank(vector, against: database.vectors("words_vec"), limit: limit)])
+    case "names":
+        let ids = (argument("--ids") ?? "").split(separator: ",").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
+        let top = argument("--top").flatMap(Int.init) ?? 5
+        emit(try Namer.load(await SigLIP.load()).name(ids: ids, in: database.vectors("text_vec"), top: top))
     case "serve":
         serve(database: database, siglip: try await SigLIP.load())
     case "similar":

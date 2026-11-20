@@ -481,7 +481,7 @@ class FetchSourcesTestCase(unittest.TestCase):
         self.assertEqual(command[:4], [str(Path.home() / ".local/bin/with-secret"),
                                       "BEACON_X_AUTH_TOKEN", "BEACON_X_CT0", "--"])
         self.assertIn("bookmarks", command)
-        self.assertIn("Keychain credentials", output.getvalue())
+        self.assertIn("scripts/x-keys", output.getvalue())
         self.assertNotIn("private diagnostic", output.getvalue())
 
     @mock.patch("lib.fetch.subprocess.run")

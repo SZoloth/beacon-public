@@ -1,0 +1,64 @@
+#!/bin/zsh
+# Land a Beacon PR: bring main in, resolve the roadmap row by row, test, push, squash-merge.
+#
+#   scripts/land N                 land PR N
+#   scripts/land N --after P Q     PR N was stacked on PRs P and Q, which already squash-merged;
+#                                  files whose only changes on main came from them take N's side
+#
+# It works in its own worktree, so the checkout you run it from is untouched. It stops (non-zero)
+# on any other conflict, a failing test or a failed push, and keeps the worktree for a hand fix.
+set -eu
+pr=${1:?usage: scripts/land N [--after P...]}; shift
+parents=()
+[[ ${1:-} == --after ]] && { shift; parents=("$@"); }
+
+repo=${0:A:h:h}
+cd $repo
+git fetch -q origin
+gh pr edit $pr --base main >/dev/null 2>&1 || true
+branch=$(gh pr view $pr --json headRefName -q .headRefName)
+wt=${TMPDIR:-/tmp}/beacon-land-$pr
+git worktree list | grep -q " \[land-$pr\]" && git worktree remove --force $wt
+git worktree add -q -B land-$pr $wt origin/$branch
+cd $wt
+
+if ! git merge -q --no-edit origin/main >/dev/null 2>&1; then
+  base=$(git merge-base HEAD origin/main)
+  for f in $(git diff --name-only --diff-filter=U); do
+    [[ $f == docs/ROADMAP.md ]] && continue
+    if (( ${#parents} )); then
+      other=$(git log --format=%s $base..origin/main -- "$f" | grep -v -E "\\((#${(j:|#:)parents})\\)\$" | head -1 || true)
+      [[ -z $other ]] && { git checkout --ours -- "$f"; continue; }
+      echo "#$pr: $f also changed on main by: $other"
+    else
+      echo "#$pr: conflict in $f"
+    fi
+    git merge --abort; echo "#$pr: worktree kept at $wt"; exit 2
+  done
+  [[ -n "$(git diff --name-only --diff-filter=U -- docs/ROADMAP.md)" ]] && scripts/python scripts/roadmap_merge.py
+  git add -A
+  [[ -z "$(git grep -l '^<<<<<<< ' || true)" ]] || { echo "#$pr: conflict markers left; worktree kept at $wt"; exit 2; }
+  git commit -q --no-edit
+  echo "#$pr: conflicts resolved"
+fi
+
+result=$(perl -e 'alarm 900; exec @ARGV' scripts/test 2>&1 | grep -E "^(Ran|OK|FAILED)" | tr '\n' ' ')
+echo "#$pr: $result"
+[[ $result == *OK* ]] || exit 3
+if [[ -n "$(git diff --name-only origin/main...HEAD -- hosted)" ]]; then
+  hosted=$(cd hosted && pnpm install --frozen-lockfile --silent >/dev/null 2>&1 && perl -e 'alarm 900; exec @ARGV' pnpm test 2>&1 | grep -E "Tests +[0-9]+ (passed|failed)" | tail -1)
+  echo "#$pr: hosted: $hosted"
+  [[ $hosted == *passed* && $hosted != *failed* ]] || exit 5
+fi
+
+git push -q origin HEAD:$branch || { echo "#$pr: push failed; not merging"; exit 4; }
+cd $repo
+git worktree remove --force $wt
+git branch -q -D land-$pr
+for attempt in 1 2 3 4 5 6; do
+  if [[ $(gh pr view $pr --json mergeable -q .mergeable) == MERGEABLE ]] && gh pr merge $pr --squash >/dev/null 2>&1; then break; fi
+  sleep 5   # GitHub needs a moment after a push before it reports mergeable or accepts the merge
+done
+state=$(gh pr view $pr --json state -q .state)
+echo "#$pr: $state"
+[[ $state == MERGED ]] || exit 6

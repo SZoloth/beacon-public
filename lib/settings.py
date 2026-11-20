@@ -16,6 +16,9 @@ PATH_KEYS = {
     "projects_dir": "the folder `beacon discover` scans for local projects",
     "systems_manifest": "a JSON manifest `beacon discover` reads project details from",
     "context_script": "a script that returns personal background for area follow-ups",
+    "mymind_cli": "a mymind-cli checkout `beacon sync --source mymind` reads the owner's tags and notes through",
+    "readwise_cli": "the readwise CLI `beacon sync --source readwise-notes` reads highlight notes and tags through",
+    "granola_digests": "the folder of daily Granola idea digests `beacon sync --source granola-digests` reads",
 }
 
 

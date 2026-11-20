@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 @main
 struct BeaconApp: App {
@@ -54,7 +57,14 @@ struct BeaconApp: App {
             CommandGroup(after: .toolbar) {
                 Button("Reload") { Task { await store.load() } }.keyboardShortcut("r")
             }
+            CommandGroup(after: .pasteboard) {
+                // Universal Clipboard carries it to the phone, where Today offers to paste it.
+                Button("Copy Key for iPhone") { PhoneKey.copyToClipboard() }
+                PairMenuButton()
+            }
         }
+        Window("Pair iPhone", id: "pair") { PairView() }
+            .windowResizability(.contentSize)
         #else
         WindowGroup {
             RootView(store: store, activity: activity, pick: pick, library: library)
@@ -87,6 +97,9 @@ struct RootView: View {
     /// Tabs opened so far. Each is built the first time, then kept and only hidden: rebuilding on
     /// every switch cost up to 1.3 s of stalled frames (Triage) and lost the Library's scroll position.
     @State private var built: Set<AppTab> = []
+    #if os(iOS)
+    @State private var pendingPair: Pairing?
+    #endif
 
     var body: some View {
         content
@@ -111,8 +124,30 @@ struct RootView: View {
                 case .save(let id):
                     tab = .library
                     Task { await library.openSave(id) }
+                case .pair(let server, let key):
+                    #if os(iOS)
+                    pendingPair = Pairing(server: server, key: key)
+                    #endif
+                    _ = (server, key)
                 }
             }
+            #if os(iOS)
+            .alert("Pair with \(pendingPair?.server.host?.split(separator: ".").first.map(String.init) ?? "this Mac")?",
+                   isPresented: Binding(get: { pendingPair != nil }, set: { if !$0 { pendingPair = nil } })) {
+                Button("Pair") {
+                    if let pair = pendingPair {
+                        UserDefaults.standard.set(pair.server.absoluteString, forKey: BeaconHTTP.serverKey)
+                        UserDefaults.standard.set(pair.key, forKey: BeaconHTTP.accessKeyKey)
+                        LibraryPage.mediaBase = pair.server
+                        Task { await store.load(); await activity.load() }
+                    }
+                    pendingPair = nil
+                }
+                Button("Cancel", role: .cancel) { pendingPair = nil }
+            } message: {
+                Text("Beacon on this phone will use \(pendingPair?.server.host ?? "that Mac") and its access key.")
+            }
+            #endif
     }
 
     @ViewBuilder
@@ -247,3 +282,25 @@ struct TabPicker: View {
         .buttonStyle(.plain)
     }
 }
+
+#if os(macOS)
+/// The phone's access key, which `beacon serve` keeps in ~/.config/beacon/serve-key.
+enum PhoneKey {
+    static func read() -> String? {
+        let path = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config/beacon/serve-key")
+        guard let key = (try? String(contentsOf: path, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !key.isEmpty else { return nil }
+        return key
+    }
+
+    static func copyToClipboard() {
+        guard let key = read() else { NSSound.beep(); return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(key, forType: .string)
+    }
+}
+#endif
+
+#if os(iOS)
+struct Pairing: Equatable { let server: URL; let key: String }
+#endif

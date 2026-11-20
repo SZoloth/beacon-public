@@ -34,8 +34,9 @@ from lib.search import search_items, semantic_search
 from lib.discover import discover_workstreams
 from lib.evaluate import write_baseline_bundle, evaluate_useful_fixture
 from lib import useful, review, intake, intake_eval, conditions, deck, save_review, advisory, curator, review_actions
-from lib import task_kit, resurface, briefs, reader, stacks, gists, mymind, x_handoff, saves_handoff, areas, pile, pick, pinterest
+from lib import task_kit, resurface, briefs, reader, stacks, gists, mymind, x_handoff, saves_handoff, areas, pile, pick, pinterest, calls
 from lib import match as save_match
+from lib import owner_notes, vocabulary
 from lib import sources as source_status
 from lib.readwise_sync import fetch_readwise
 
@@ -73,7 +74,9 @@ def _classification_batch_size(config, args):
 
 
 def _source_choices(config):
-    return sorted(config.get("sources", {}).keys())
+    """Configured sources in LIVE_ORDER, then any others by name: X runs before the notes that attach to its posts."""
+    order = {name: index for index, name in enumerate(source_status.LIVE_ORDER)}
+    return sorted(config.get("sources", {}), key=lambda name: (order.get(name, len(order)), name))
 
 
 def _sync_source(source, source_config, full=False):
@@ -115,6 +118,8 @@ def _sync_source(source, source_config, full=False):
             db_path=db.DB_PATH,
             full=full,
         )
+    if source in owner_notes.SYNCS:
+        return owner_notes.sync(source, full=full)
     raise RuntimeError(f"Unknown source: {source}. It is not a live fetch.")
 
 
@@ -150,6 +155,40 @@ def cmd_run(args):
         regenerate_all_backlogs()
     else:
         print("  No stale items")
+    print("\n=== Vocabulary ===")
+    try:
+        result = vocabulary.propose()
+        print(f"  Asked about {result['sent']} unresolved owner terms; kept {result['stored']} proposals")
+    except RuntimeError as error:
+        print(f"  Vocabulary proposals skipped: {error}")
+
+
+def cmd_vocab(args):
+    """The owner's terms and where they point; set, unset or ask a model to propose."""
+    from contextlib import closing
+    if args.action == "set":
+        print(f"{vocabulary.set_term(args.term, args.target)} -> {args.target} (owner)")
+    elif args.action == "unset":
+        print(f"removed {vocabulary.unset_term(args.term, args.target)} row(s)")
+    elif args.action == "propose":
+        try:
+            result = vocabulary.propose(preview=args.preview)
+        except RuntimeError as error:
+            print(f"vocab: {error}", file=sys.stderr)
+            raise SystemExit(1) from None
+        if args.preview:
+            print(result.get("prompt") or "Nothing to propose: every owner term is resolved or already asked about.")
+        else:
+            print(json.dumps(result, ensure_ascii=False))
+    else:
+        with closing(db.get_connection()) as conn:
+            rows = vocabulary.listing(conn)
+        if args.json:
+            print(json.dumps(rows, ensure_ascii=False))
+            return
+        for row in rows:
+            where = ", ".join(row["targets"]) if row["targets"] else "-"
+            print(f"{row['saves']:>5}  {row['how']:<10}  {row['term']}  ->  {where}")
 
 
 def cmd_sync(args):
@@ -296,7 +335,8 @@ def cmd_pile(args):
 
 def cmd_pick(args):
     if args.action == "score":
-        print(json.dumps(pick.score(args.axis, args.limit)))
+        ids = [int(i) for i in args.ids.split(",")] if args.ids else None
+        print(json.dumps(pick.score(args.axis, args.limit, rescore=args.rescore, ids=ids)))
     elif args.action == "prepare":
         try:
             result = pick.prepare(args.axis)
@@ -325,6 +365,30 @@ def cmd_pick(args):
         print(json.dumps(result))
     else:
         print(json.dumps(pick.summary(), ensure_ascii=False))
+
+
+def cmd_calls(args):
+    try:
+        if args.action == "session":
+            result = calls.session(args.size, new=args.new)
+        elif args.action == "check":
+            result = calls.check(args.session, args.card, args.answer, destination=args.destination, chip=args.chip)
+        elif args.action == "undo":
+            result = calls.undo(args.change)
+        elif args.action == "summary":
+            result = calls.summary(args.session)
+        elif args.action == "rank":
+            result = calls.rank()
+        else:
+            config = load_config()
+            result = calls.redecide(args.group, config["workstreams"] + config.get("areas", []), max_cost=args.max_cost)
+    except ValueError as error:
+        print(f"calls: {error}", file=sys.stderr)
+        sys.exit(2)
+    except RuntimeError as error:
+        print(f"calls: {error}", file=sys.stderr)
+        sys.exit(1)
+    print(json.dumps(result, ensure_ascii=False))
 
 
 def cmd_areas(args):
@@ -1173,6 +1237,8 @@ def main():
     score_parser = pick_actions.add_parser("score", help="Haiku scores unscored saves on one axis, 15 per call (about $0.20 per 1,000)")
     score_parser.add_argument("--axis", required=True, choices=list(pick.AXES))
     score_parser.add_argument("--limit", type=int, default=600, help="Maximum saves to score this run")
+    score_parser.add_argument("--rescore", action="store_true", help="Also replace scores made by an older scoring prompt")
+    score_parser.add_argument("--ids", help="Only these saves (comma-separated ids)")
     prepare_parser = pick_actions.add_parser("prepare", help="Build the next round of 20 pairs (EmbeddingGemma topic match, on this Mac)")
     prepare_parser.add_argument("--axis", choices=list(pick.AXES), help="Default: the least settled axis")
     pick_actions.add_parser("round", help="Print the current round and your picks so far as JSON")
@@ -1190,6 +1256,25 @@ def main():
     holdout_parser.add_argument("--seed", type=int, default=0, help="Seed for the split, so a run can be repeated")
     holdout_parser.add_argument("--max-cost", type=float, default=3.0, help="Stop before a batch would pass this many USD (default 3)")
     holdout_parser.add_argument("--preview", action="store_true", help="Show the split and stop: no embedding, no model calls")
+    calls_parser = subparsers.add_parser("calls", help="Check Beacon's keep/pass calls, ten cards a session (see docs/calls.md)")
+    calls_actions = calls_parser.add_subparsers(dest="action", required=True)
+    session_parser = calls_actions.add_parser("session", help="The open session's cards as JSON (a new one if none is open)")
+    session_parser.add_argument("--size", type=int, default=calls.SIZE)
+    session_parser.add_argument("--new", action="store_true", help="Start a new session even if one is open ('10 more')")
+    check_parser = calls_actions.add_parser("check", help="Answer one card: keep, pass or unsure (can't tell)")
+    check_parser.add_argument("--session", required=True)
+    check_parser.add_argument("--card", required=True)
+    check_parser.add_argument("--answer", required=True, choices=list(calls.ANSWERS))
+    check_parser.add_argument("--destination", help="Where a save you keep goes (project or area slug)")
+    check_parser.add_argument("--chip", help="One of the session's chips, tapped by you")
+    calls_undo_parser = calls_actions.add_parser("undo", help="Put one change back")
+    calls_undo_parser.add_argument("--change", type=int, required=True)
+    calls_summary_parser = calls_actions.add_parser("summary", help="The end-of-session portrait as JSON")
+    calls_summary_parser.add_argument("--session")
+    calls_actions.add_parser("rank", help="Nightly: suspect scores and flagged neighbours (EmbeddingGemma, on this Mac, minutes)")
+    redecide_parser = calls_actions.add_parser("redecide", help="Haiku re-decides one group's standing calls with your checks as examples (only after you accept the offer)")
+    redecide_parser.add_argument("--group", required=True, choices=list(calls.GROUPS))
+    redecide_parser.add_argument("--max-cost", type=float, default=5.0, help="Stop once this many USD are spent (default 5)")
     read_parser = subparsers.add_parser("read", help="Send an item to Readwise Reader (marks it adopted, note: read)")
     read_parser.add_argument("item_id", type=int)
     briefs_parser = subparsers.add_parser("briefs", help="Print project plans with their briefs as JSON")
@@ -1210,6 +1295,15 @@ def main():
     areas_parser.add_argument("--limit", type=int, default=1000, help="Held saves to ask about this run")
     areas_parser.add_argument("--k", type=int, default=25, help="Max active items per area (default 25)")
     areas_parser.add_argument("--allow-upload", action="store_true", help="Send save text to TypeSafe (Jev)")
+    vocab_parser = subparsers.add_parser("vocab", help="The owner's tags and the projects or areas they point at")
+    vocab_parser.add_argument("--json", action="store_true")
+    vocab_actions = vocab_parser.add_subparsers(dest="action")
+    for action in ("set", "unset"):
+        vocab_action = vocab_actions.add_parser(action, help=f"{action.capitalize()} an owner row: TERM points at TARGET (a slug, or none)")
+        vocab_action.add_argument("term")
+        vocab_action.add_argument("target")
+    propose_parser = vocab_actions.add_parser("propose", help="Ask a model where unresolved terms point (terms and project descriptions only)")
+    propose_parser.add_argument("--preview", action="store_true", help="Print the exact prompt; no call")
     library_parser = subparsers.add_parser("library", help="Print a page of saves with pictures, plus GitHub stars, as JSON for Mosaic")
     library_parser.add_argument("--offset", type=int, default=0)
     library_parser.add_argument("--limit", type=int, default=200)
@@ -1643,6 +1737,7 @@ def _dispatch(args):
         "gist": cmd_gist,
         "pile": cmd_pile,
         "pick": cmd_pick,
+        "calls": cmd_calls,
         "serve": cmd_serve,
         "briefs": cmd_briefs,
         "follow-up": cmd_follow_up,
@@ -1663,6 +1758,7 @@ def _dispatch(args):
         "activity-answer": cmd_activity_answer,
         "mcp": cmd_mcp,
         "areas": cmd_areas,
+        "vocab": cmd_vocab,
         "search": cmd_search,
         "list": cmd_list,
         "stats": cmd_stats,

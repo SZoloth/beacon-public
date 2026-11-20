@@ -54,9 +54,9 @@ actor BeaconCLI: Backend {
     /// Reads from `beacon serve` on this Mac when it's running: about 0.1 s, where starting
     /// `beacon queue` took 0.5-2 s. Nil (so the CLI answers) when the server is down, or when a
     /// different checkout is configured and the server's database isn't the one writes go to.
-    private func fromServer<T: Decodable>(_ path: String) async -> T? {
+    private func fromServer<T: Decodable>(_ path: String, timeout: TimeInterval = 5) async -> T? {
         guard Self.usesSharedServer else { return nil }
-        let request = URLRequest(url: URL(string: "http://127.0.0.1:8765/\(path)")!, timeoutInterval: 5)
+        let request = URLRequest(url: URL(string: "http://127.0.0.1:8765/\(path)")!, timeoutInterval: timeout)
         guard let (data, response) = try? await URLSession.shared.data(for: request),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
         return try? JSONDecoder().decode(T.self, from: data)
@@ -191,9 +191,43 @@ actor BeaconCLI: Backend {
 
     // MARK: Pick
 
-    func pickRound() async throws -> PickRound {
-        if let round: PickRound = await fromServer("pick/round") { return round }
-        return try JSONDecoder().decode(PickRound.self, from: run(["pick", "round"]))
+    func callSession(size: Int, new: Bool) async throws -> CallSession {
+        // A long wait: giving up early and asking the CLI would store a second session.
+        if let session: CallSession = await fromServer("calls/session?size=\(size)&new=\(new ? 1 : 0)", timeout: 60) {
+            return session
+        }
+        return try await Self.inBeaconsWords {
+            try JSONDecoder().decode(CallSession.self, from: run(["calls", "session", "--size", String(size)] + (new ? ["--new"] : [])))
+        }
+    }
+
+    func checkCall(session: LooseID, card: LooseID, answer: String, destination: String?, chip: String?) async throws -> CallCheck {
+        var body: [String: Any] = ["session_id": session.json, "card_id": card.json, "answer": answer]
+        if let destination { body["destination"] = destination }
+        if let chip { body["chip"] = chip }
+        if let reply: CallCheck = try await Self.toServer("calls/check", body) { return reply }
+        let args = ["calls", "check", "--session", session.description, "--card", card.description, "--answer", answer]
+            + (destination.map { ["--destination=\($0)"] } ?? []) + (chip.map { ["--chip=\($0)"] } ?? [])
+        return try await Self.inBeaconsWords { try JSONDecoder().decode(CallCheck.self, from: run(args)) }
+    }
+
+    func undoCall(change: LooseID) async throws {
+        if let _: CallUndone = try await Self.toServer("calls/undo", ["change_id": change.json]) { return }
+        _ = try await Self.inBeaconsWords { try run(["calls", "undo", "--change", change.description]) }
+    }
+
+    func callSummary(session: LooseID?) async throws -> CallSummary {
+        let query = session.flatMap { "?session=\($0)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) } ?? ""
+        if let summary: CallSummary = await fromServer("calls/summary\(query)") { return summary }
+        return try await Self.inBeaconsWords {
+            try JSONDecoder().decode(CallSummary.self, from: run(["calls", "summary"] + (session.map { ["--session", $0.description] } ?? [])))
+        }
+    }
+
+    /// The CLI runs the whole re-decide before it answers; the server starts it and answers at once.
+    nonisolated func redecide(group: String) async throws {
+        if let _: RedecideStarted = try await Self.toServer("calls/redecide", ["group": group]) { return }
+        try await runWhileTheAgentWorks(["calls", "redecide", "--group", group])
     }
 
     func pick(round id: Int, position: Int, choice: String, why: String?, shownAt: String?) async throws -> Int? {
@@ -211,20 +245,6 @@ actor BeaconCLI: Backend {
         return try await Self.inBeaconsWords {
             try JSONDecoder().decode(PickUndone.self, from: run(["pick", "undo", "--round", String(id)])).position
         }
-    }
-
-    /// The CLI builds the round before it answers (minutes of EmbeddingGemma), so this waits for it there.
-    nonisolated func preparePick(axis: String?) async throws -> Bool {
-        if let reply: PickPreparing = try await Self.toServer("pick/prepare", axis.map { ["axis": $0] } ?? [:]) {
-            return reply.started
-        }
-        try await runWhileTheAgentWorks(["pick", "prepare"] + (axis.map { ["--axis", $0] } ?? []))
-        return true
-    }
-
-    func pickSummary() async throws -> PickSummary {
-        if let summary: PickSummary = await fromServer("pick/summary") { return summary }
-        return try JSONDecoder().decode(PickSummary.self, from: run(["pick", "summary"]))
     }
 
     /// Outside the actor, like plan: the command lives as long as the agent's run.

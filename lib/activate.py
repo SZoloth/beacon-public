@@ -42,13 +42,15 @@ SCAN_LINES = 50_000
 # a fast first pass over big files). Unset, nothing is client work.
 NEVER = re.compile(r"(?!)")
 CLIENT_SLUGS, CLIENT_FOLDERS, CLIENT_NAME, CLIENT_HINT, CLIENT_BYTES = frozenset(), (), NEVER, NEVER, re.compile(rb"(?!)")
+CLIENT_WORDS = ()
 
 
 def _load_clients(config):
     """Set the client-work rules from a config dict."""
-    global CLIENT_SLUGS, CLIENT_FOLDERS, CLIENT_NAME, CLIENT_HINT, CLIENT_BYTES
+    global CLIENT_SLUGS, CLIENT_FOLDERS, CLIENT_NAME, CLIENT_HINT, CLIENT_BYTES, CLIENT_WORDS
     rules = config.get("client_work") or {}
     names, words = rules.get("names"), [w for w in rules.get("words") or [] if w]
+    CLIENT_WORDS = tuple(word.lower() for word in words)
     CLIENT_SLUGS = frozenset(rules.get("slugs") or ())
     CLIENT_FOLDERS = tuple(rules.get("folders") or ())
     CLIENT_NAME = re.compile(names) if names else NEVER
@@ -1428,12 +1430,18 @@ def _related(dest, item, takeaway, clients):
         recent = references.for_project(dest.slug, limit=9)["saves"]
         seen = {save["id"] for save in saves}
         saves.extend(save for save in recent if save["id"] not in seen)
-    lines = []
+    lines = {"filed": [], "noted": []}
     for save in [s for s in saves if s["id"] != item["id"] and s["id"] not in clients][:8]:
         label = _clip(_line(save["title"] or save["text"] or ""), 100)
-        lines.append(None if label is None else f"- [{save['filed']}] {label}"
-                     + (f": {_line(save['takeaway'])}" if save["takeaway"] else "") + (f" ({_line(save['url'])})" if save["url"] else ""))
-    return f"## Related saves already filed for {dest.name}\n" + _fenced("related", lines, "related save") if lines else ""
+        noted = save["filed"] == "noted"
+        lines["noted" if noted else "filed"].append(
+            None if label is None else ("- " if noted else f"- [{save['filed']}] ") + label
+            + (f": {_line(save['takeaway'])}" if save["takeaway"] else "") + (f" ({_line(save['url'])})" if save["url"] else ""))
+    sections = [f"## Related saves already filed for {dest.name}\n" + _fenced("related", lines["filed"], "related save")
+                if lines["filed"] else "",
+                f"## Saves {_owner()}'s own notes point at for {dest.name}\n" + _fenced("noted", lines["noted"], "noted save")
+                if lines["noted"] else ""]
+    return "\n\n".join(section for section in sections if section)
 
 
 def _to_do(dest, planned):

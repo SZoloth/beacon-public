@@ -9,11 +9,13 @@ import html
 import json
 import os
 import re
+import subprocess
+import time
 from datetime import datetime, timezone
 from functools import partial
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode, urlsplit
 from urllib.request import Request, urlopen
 
 from lib import db, reader, saves_handoff
@@ -27,19 +29,53 @@ _HYDRATE_LIMIT = 50
 
 
 def fetch_readwise(count=200, handoff_dir=None, db_path=None, token=None, opener=None, full=False):
-    """Import dropped files, then list Reader tweets. Missing token fails after the files."""
+    """Import dropped files, then list Reader tweets through the signed-in readwise CLI, else the stored token.
+    With neither, it fails after the files."""
     if full:
         count = max(count, 2000)
     files = _ingest_handoff_dir(handoff_dir, db_path)
+    cli = reader._cli() if opener is None else None
+    if cli:  # signed in through the readwise CLI: no stored token to go stale
+        api = _ingest_api(count, db_path, "", partial(_open_cli, cli))
+        return {"live": True, "auth_tested": api["list_ok"], "files": files, **api}
     resolved = reader._token() if token is None else token
     if not resolved:
         raise RuntimeError(
-            "READWISE_ACCESS_TOKEN is not set; add it to ~/.config/shell/secrets.zsh. "
+            "READWISE_ACCESS_TOKEN is not set; store it with `with-secret --add READWISE_ACCESS_TOKEN`. "
             "Reader was not called. Auth was not tested. "
             f"Handoff files imported this run: {files['imported']}."
         )
     api = _ingest_api(count, db_path, resolved, opener or _open)
     return {"live": True, "auth_tested": api["list_ok"], "files": files, **api}
+
+
+_CLI_TRIES, _CLI_PAUSE = 3, 20
+_CLI_FIELDS = json.dumps(["url", "title", "author", "source", "category", "created_at", "updated_at", "saved_at",
+                          "source_url", "parent_id", "html_content"])
+_CLI_FLAGS = {"category": "--category", "id": "--id", "pageCursor": "--page-cursor", "updatedAfter": "--updated-after"}
+
+
+def _open_cli(cli, url, _token):
+    """The same list request as `_open`, made through the signed-in readwise CLI."""
+    command = [cli, "--json", "reader-list-documents"]
+    for key, values in parse_qs(urlsplit(url).query).items():
+        if key in _CLI_FLAGS:
+            command += [_CLI_FLAGS[key], values[0]]
+    command += ["--limit", "100", "--response-fields", _CLI_FIELDS]  # without html_content a tweet comes back title-only
+    # Reader's list fails now and then mid-run; a pause and the CLI's --refresh (a fresh tool list) clears it.
+    for attempt in range(_CLI_TRIES):
+        if attempt:
+            time.sleep(_CLI_PAUSE)
+        done = subprocess.run(command if not attempt else [cli, "--refresh", *command[1:]],
+                              capture_output=True, text=True, timeout=120, check=False)
+        if done.returncode == 0:
+            break
+    else:
+        raise RuntimeError(f"Readwise Reader list failed through the readwise CLI: {done.stderr.strip()[:200]}")
+    try:
+        return json.loads(done.stdout or "{}")
+    except ValueError:
+        raise RuntimeError("Readwise Reader list through the readwise CLI returned no JSON.") from None
 
 
 def _open(url, token):

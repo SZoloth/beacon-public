@@ -5,8 +5,26 @@ struct BeaconHTTP: Backend {
     static let serverKey = "beaconServer"
     /// The phone's access key (`beacon serve --show-key` on the Mac), entered in Settings › Beacon.
     static let accessKeyKey = "beaconKey"
-    /// A placeholder; enter your Mac's MagicDNS name (or Tailscale IP) and port in Settings › Beacon.
-    static let defaultServer = "http://your-mac.your-tailnet.ts.net:8765"
+    /// Where the phone looks before anything is entered in Settings › Beacon: the address
+    /// `scripts/install-phone` built in (the owner's Mac), or a placeholder in public builds.
+    static let placeholderServer = "http://your-mac.your-tailnet.ts.net:8765"
+    static var defaultServer: String {
+        nonEmpty(Bundle.main.object(forInfoDictionaryKey: "BeaconDefaultServer") as? String) ?? placeholderServer
+    }
+
+    /// A blank Settings field counts as unset, so it can't turn into an invalid URL.
+    static func nonEmpty(_ text: String?) -> String? {
+        guard let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else { return nil }
+        return trimmed
+    }
+
+    /// The server the phone uses: Settings › Beacon if filled in, then the built-in default.
+    static func phoneServer(setting: String?, builtIn: String) -> URL {
+        for candidate in [nonEmpty(setting), nonEmpty(builtIn)] {
+            if let text = candidate, let url = URL(string: text), url.host != nil { return url }
+        }
+        return URL(string: placeholderServer)!
+    }
 
     struct Failure: LocalizedError {
         let errorDescription: String?
@@ -16,7 +34,7 @@ struct BeaconHTTP: Backend {
     var server: URL?
 
     var base: URL {
-        server ?? URL(string: UserDefaults.standard.string(forKey: Self.serverKey) ?? Self.defaultServer)!
+        server ?? Self.phoneServer(setting: UserDefaults.standard.string(forKey: Self.serverKey), builtIn: Self.defaultServer)
     }
 
     func queue() async throws -> [Item] { try await get("queue") }
@@ -96,7 +114,28 @@ struct BeaconHTTP: Backend {
         try JSONDecoder().decode(Activation.self, from: await post("activity/\(id)", ["state": state]))
     }
 
-    func pickRound() async throws -> PickRound { try await get("pick/round") }
+    func callSession(size: Int, new: Bool) async throws -> CallSession {
+        try await get("calls/session", query: ["size": String(size), "new": new ? "1" : "0"])
+    }
+
+    func checkCall(session: LooseID, card: LooseID, answer: String, destination: String?, chip: String?) async throws -> CallCheck {
+        var body: [String: Any] = ["session_id": session.json, "card_id": card.json, "answer": answer]
+        if let destination { body["destination"] = destination }
+        if let chip { body["chip"] = chip }
+        return try JSONDecoder().decode(CallCheck.self, from: await post("calls/check", body))
+    }
+
+    func undoCall(change: LooseID) async throws {
+        try await post("calls/undo", ["change_id": change.json])
+    }
+
+    func callSummary(session: LooseID?) async throws -> CallSummary {
+        try await get("calls/summary", query: session.map { ["session": $0.description] } ?? [:])
+    }
+
+    func redecide(group: String) async throws {
+        try await post("calls/redecide", ["group": group])
+    }
 
     func pick(round id: Int, position: Int, choice: String, why: String?, shownAt: String?) async throws -> Int? {
         var body: [String: Any] = ["round_id": id, "position": position, "choice": choice]
@@ -109,19 +148,15 @@ struct BeaconHTTP: Backend {
         try JSONDecoder().decode(PickUndone.self, from: await post("pick/undo", ["round_id": id])).position
     }
 
-    func preparePick(axis: String?) async throws -> Bool {
-        try JSONDecoder().decode(PickPreparing.self, from: await post("pick/prepare", axis.map { ["axis": $0] } ?? [:])).started
-    }
-
-    func pickSummary() async throws -> PickSummary { try await get("pick/summary") }
-
     /// The pipeline runs on the Mac's schedule or its Sync button; a phone request would outlive the connection.
     func sync() async throws {
         throw Failure(errorDescription: "Sync runs from the Mac app.")
     }
 
-    private func get<T: Decodable>(_ path: String) async throws -> T {
-        try JSONDecoder().decode(T.self, from: await send(URLRequest(url: base.appending(path: path))))
+    private func get<T: Decodable>(_ path: String, query: [String: String] = [:]) async throws -> T {
+        var url = URLComponents(url: base.appending(path: path), resolvingAgainstBaseURL: false)!
+        if !query.isEmpty { url.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) } }
+        return try JSONDecoder().decode(T.self, from: await send(URLRequest(url: url.url!)))
     }
 
     @discardableResult
@@ -149,7 +184,7 @@ struct BeaconHTTP: Backend {
                 : "Can't reach Beacon on the Mac. Check that Tailscale is on and the Mac is awake.")
         }
         if (response as? HTTPURLResponse)?.statusCode == 401 {
-            throw Failure(errorDescription: "Beacon needs its access key. Run `beacon serve --show-key` on the Mac and paste it in Settings › Beacon.")
+            throw Failure(errorDescription: "Beacon needs its access key. On the Mac, choose Edit › Copy Key for iPhone, then tap Paste Access Key.")
         }
         guard let status = (response as? HTTPURLResponse)?.statusCode, status < 300 else {
             let message = (try? JSONDecoder().decode([String: String].self, from: data))?["error"]

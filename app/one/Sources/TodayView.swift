@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 /// The yellow half of the app, where you decide. Autopilot passes the noise and sends reading to
 /// Reader on its own, so Triage shows today's few picks, then what Beacon handled, with Undo. Each
@@ -97,6 +100,9 @@ struct TodayView: View {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 80)
                 } else if let error = store.loadError {
                     Message(title: "Can't reach Beacon", text: error)
+                    #if os(iOS)
+                    PasteKeyButton { await store.load() }
+                    #endif
                 } else if store.picks.isEmpty {
                     CaughtUp().frame(maxWidth: .infinity).padding(.top, 80)
                 }
@@ -424,3 +430,34 @@ extension Decision {
         self == .reject ? "Pass" : title(for: item)
     }
 }
+
+#if os(iOS)
+/// Saves the access key copied on the Mac (Beacon › Edit › Copy Key for iPhone) and reloads.
+private struct PasteKeyButton: View {
+    let reload: () async -> Void
+    @State private var note: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                guard let key = BeaconHTTP.nonEmpty(UIPasteboard.general.string) else {
+                    note = "Nothing to paste. On the Mac, choose Edit › Copy Key for iPhone."
+                    return
+                }
+                UserDefaults.standard.set(key, forKey: BeaconHTTP.accessKeyKey)
+                note = nil
+                Task { await reload() }
+            } label: {
+                Text("Paste Access Key")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20).padding(.vertical, 12)
+                    .background(Theme.ink, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            if let note { Text(note).font(.system(size: 14)).foregroundStyle(Theme.quiet) }
+        }
+        .padding(.top, 16)
+    }
+}
+#endif

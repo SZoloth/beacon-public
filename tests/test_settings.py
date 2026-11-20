@@ -13,7 +13,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
-from lib import db, followups, route, settings
+from lib import db, followups, owner_notes, route, settings
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 import export_public  # noqa: E402
@@ -64,6 +64,9 @@ class ExampleConfigTest(unittest.TestCase):
         self.assertTrue(set(config["paths"]) <= set(settings.PATH_KEYS))
         # Only sources a stranger can run are switched on.
         enabled = {name for name, source in config["sources"].items() if source.get("enabled", True)}
+        # Owner-notes syncs need a path the example leaves unset, so they skip themselves.
+        self.assertFalse(any(config["paths"][key] for key in owner_notes.SYNCS.values()))
+        enabled -= set(owner_notes.SYNCS)
         self.assertEqual(enabled, {"github", "readwise"})
 
     def test_lib_has_no_personal_paths(self):

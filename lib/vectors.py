@@ -195,6 +195,23 @@ def index_later(item_id, read):
     threading.Thread(target=work, name=f"index-{item_id}", daemon=True).start()
 
 
+def names(ids, top=5):
+    """{item_id: [(name, score), ...]}: what each picture shows, best name first, from its stored SigLIP vector
+    and Apple Vision's fixed list of everyday names (the helper's `names`). Saves without a picture vector are
+    left out; an old or missing helper gives {}, and readers carry on without names."""
+    ids = [int(i) for i in ids]
+    if not ids:
+        return {}
+    try:
+        if resident:
+            answer = resident.ask({"names": ids, "top": top})
+        else:
+            answer = json.loads(_run("names", "--ids", ",".join(map(str, ids)), "--top", str(top)))
+    except (RuntimeError, OSError, ValueError, subprocess.TimeoutExpired):
+        return {}
+    return {int(item_id): [(str(name), float(score)) for name, score in named] for item_id, named in answer.items()}
+
+
 def meaning(query, limit=300):
     """[(item_id, score)] by meaning, nudged up where the words themselves appear."""
     ranked = [(int(item_id), score) for item_id, score in _search("meaning", query, limit)]

@@ -30,7 +30,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from datetime import datetime
 
-from . import activate, adds, autopilot, briefs, compose, db, pick, vectors
+from . import activate, adds, autopilot, briefs, calls, compose, db, pick, vectors
 
 ROOT = Path(__file__).resolve().parent.parent
 NETWORKS = [ipaddress.ip_network(n) for n in ("127.0.0.0/8", "::1/128", "100.64.0.0/10", "fd7a:115c:a1e0::/48")]
@@ -261,6 +261,15 @@ def route(method, path, body, run=run_cli):
         return 200, pick.current()
     if method == "GET" and path == "/pick/summary":
         return 200, pick.summary()
+    if method == "GET" and path in ("/calls/session", "/calls/summary"):
+        params = parse_qs(query)
+        if path == "/calls/summary":
+            return 200, calls.summary(params.get("session", [None])[0])
+        size = params.get("size", [str(calls.SIZE)])[0]
+        if not size.isdigit() or not 1 <= int(size) <= 30:
+            raise ValueError("size must be a whole number from 1 to 30")
+        with _writes:  # a new session is stored
+            return 200, calls.session(int(size), new=params.get("new", ["0"])[0] in ("1", "true"))
     if method == "GET" and path == "/library/compose/summary":
         return 200, compose.summary()
     if method == "GET" and path == "/library":
@@ -338,6 +347,26 @@ def route(method, path, body, run=run_cli):
             if shown_at is not None and (not isinstance(shown_at, str) or not _iso(shown_at)):
                 raise ValueError("shown_at must be an ISO 8601 time")
             return 200, pick.record(round_id, position, body.get("choice"), why=why, shown_at=shown_at)
+    if path in ("/calls/check", "/calls/undo", "/calls/redecide"):
+        # Answered here: a check is a few rows, and the phone sends one per tap.
+        with _writes:
+            if path == "/calls/undo":
+                return 200, calls.undo(int(_int(body.get("change_id"), "change_id")))
+            if path == "/calls/redecide":
+                if not _one_of(body.get("group"), calls.GROUPS):
+                    raise ValueError(f"group must be one of {', '.join(calls.GROUPS)}")
+                config = json.loads((ROOT / "config.json").read_text())
+                return 200, calls.start_redecide(body["group"], config["workstreams"] + config.get("areas", []))
+            for name in ("session_id", "card_id"):
+                if not isinstance(body.get(name), str):
+                    raise ValueError(f"{name} must be text")
+            for name in ("destination", "chip"):
+                if body.get(name) is not None and not isinstance(body[name], str):
+                    raise ValueError(f"{name} must be text")
+            if not _one_of(body.get("answer"), calls.ANSWERS):
+                raise ValueError("answer must be keep, pass or unsure")
+            return 200, calls.check(body["session_id"], body["card_id"], body["answer"],
+                                    destination=body.get("destination"), chip=body.get("chip"))
     if path == "/references":
         brief = body.get("brief")
         if not isinstance(brief, str) or not brief.strip() or brief.strip().startswith("-"):

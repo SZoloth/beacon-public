@@ -1899,6 +1899,16 @@ class PromptTest(ActivateCase):
         body = text.split(heading, 1)[1]
         return body.split("\n## ", 1)[0]
 
+    def test_a_save_the_owners_note_points_at_the_project_is_listed_as_noted(self):
+        with closing(db.get_connection()) as conn, conn:
+            item = conn.execute("INSERT INTO items(source, external_id, title, body, synced_at) "
+                                "VALUES('mymind', 'card', 'NOTED-CARD', 'a card', 'now')").lastrowid
+            conn.execute("INSERT INTO owner_notes(item_id, source, external_id, kind, origin, body, synced_at) "
+                         "VALUES(?, 'mymind', 'card:tag:test project', 'tag', 'owner', 'test project', 'now')", (item,))
+        text = activate.prompt(1, "proj")
+        self.assertIn("- NOTED-CARD", self.section(text, "## Saves Ada's own notes point at for Test Project"))
+        self.assertNotIn("NOTED-CARD", self.section(text, "## Related saves already filed for Test Project"))
+
     def test_a_project_prompt_carries_the_save_the_plan_and_the_rules(self):
         text = activate.prompt(1, "proj")
         self.assertTrue(text.startswith("Ada kept a save in Beacon, their bookmark triage app, and sent it to Test Project. "

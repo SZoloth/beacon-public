@@ -4,164 +4,351 @@ import Testing
 
 private struct Down: Error {}
 
-/// Answers like `beacon serve`'s pick routes: `GET /pick/round`, `POST /pick`, `/pick/undo`, `/pick/prepare`.
-private actor FakePick: PickBackend {
-    var round: PickRound
+/// Answers like `beacon serve`'s calls routes and the pair routes it keeps (`/pick`, `/pick/undo`).
+/// Beacon passed every card except those in `kept`.
+private actor FakeCalls: PickBackend {
+    var kept: Set<Int> = []
     var failing = false
-    /// Rounds `pickRound` returns while a prepare runs, then the prepared one.
-    var preparing: [PickRound] = []
-    private(set) var recorded: [(Int, Int, String, String?)] = []
-    private(set) var undos: [Int] = []
-    private(set) var prepares: [String?] = []
+    private(set) var sessions = 0
+    private(set) var newSessions = 0
+    /// Cards already answered in the open session.
+    var answered: Set<Int> = []
+    private(set) var checks: [(card: String, answer: String, destination: String?, chip: String?)] = []
+    private(set) var undoneChanges: [String] = []
+    private(set) var picks: [(round: Int, position: Int, choice: String)] = []
+    private(set) var undonePicks: [Int] = []
+    private(set) var summaries = 0
+    private var nextChange = 100
 
-    init(_ round: PickRound) { self.round = round }
-
-    func pickRound() async throws -> PickRound {
-        if !preparing.isEmpty { round = preparing.removeFirst() }
-        return round
+    func callSession(size: Int, new: Bool) async throws -> CallSession {
+        sessions += 1
+        if new { newSessions += 1 }
+        return try JSONDecoder().decode(CallSession.self, from: Data(sessionJSON(cards: 3, pairs: 2, answered: new ? [] : answered).utf8))
     }
 
-    func pick(round id: Int, position: Int, choice: String, why: String?, shownAt: String?) async throws -> Int? {
+    func checkCall(session: LooseID, card: LooseID, answer: String, destination: String?, chip: String?) async throws -> CallCheck {
         if failing { throw Down() }
-        recorded.append((id, position, choice, why))
-        let done = Set(recorded.map(\.1))
-        return (round.pairs ?? []).map(\.position).first { !done.contains($0) }
-    }
-
-    func undoPick(round id: Int) async throws -> Int? {
-        undos.append(id)
-        guard let last = recorded.popLast() else { return nil }
-        return last.1
-    }
-
-    func preparePick(axis: String?) async throws -> Bool {
-        prepares.append(axis)
-        return true
-    }
-
-    func pickSummary() async throws -> PickSummary {
-        try JSONDecoder().decode(PickSummary.self, from: Data("""
-        {"picks": 3, "axes": {"working": {"question": "Shows the working, or tells you about it?",
-          "map_line": "Keep 1", "decisive": 3, "toward_keep": 2, "state": "inferred", "neither": 0, "skip": 0,
-          "repeats": 0, "consistency": null, "foils": 0, "save_over_foil": 0, "top_why": [["real numbers", 1]]}}}
+        checks.append((card.description, answer, destination, chip))
+        let item = Int(card.description.dropFirst())! // "c7" → 7
+        let beacon = kept.contains(item) ? "keep" : "pass"
+        let agreed = answer == "unsure" || answer == beacon
+        var change = "null"
+        if !agreed { nextChange += 1; change = String(nextChange) }
+        return try JSONDecoder().decode(CallCheck.self, from: Data("""
+        {"agreed": \(agreed), "beacon_outcome": "\(beacon)", "beacon_reason": "Beacon \(beacon == "pass" ? "passed" : "kept") this: you pass on tool lists.",
+         "suggested_destination": \(beacon == "pass" ? "\"reading\"" : "null"), "change_id": \(change)}
         """.utf8))
     }
 
+    func undoCall(change: LooseID) async throws { undoneChanges.append(change.description) }
+
+    private(set) var redecided: [String] = []
+    func redecide(group: String) async throws { redecided.append(group) }
+
+    func callSummary(session: LooseID?) async throws -> CallSummary {
+        summaries += 1
+        return try JSONDecoder().decode(CallSummary.self, from: Data(summaryJSON.utf8))
+    }
+
+    func pick(round id: Int, position: Int, choice: String, why: String?, shownAt: String?) async throws -> Int? {
+        picks.append((id, position, choice))
+        return nil
+    }
+
+    func undoPick(round id: Int) async throws -> Int? {
+        undonePicks.append(id)
+        return picks.popLast()?.position
+    }
+
+    func keep(_ items: Set<Int>) { kept = items }
+    func setAnswered(_ items: Set<Int>) { answered = items }
     func setFailing(_ on: Bool) { failing = on }
-    func setPreparing(_ rounds: [PickRound]) { preparing = rounds }
 }
 
-/// A round as `GET /pick/round` prints it: `count` pairs, the first `picked` already chosen.
-private func round(id: Int = 5, count: Int = 3, picked: Int = 0) -> PickRound {
-    func card(_ id: Int) -> String {
+/// A session as `GET /calls/session` prints it: items 1…cards, then pairs on round 9.
+private func sessionJSON(cards: Int, pairs: Int, answered: Set<Int> = []) -> String {
+    let cardList = (1...cards).map { n in
         """
-        {"id": \(id), "source": "x", "author": "@a", "text": "Save \(id)", "takeaway": null,
-         "url": "https://x.com/a/\(id)", "has_media": false}
+        {"card_id": "c\(n)", "position": \(n), "answer": \(answered.contains(n) ? "\"pass\"" : "null"), "item": {"id": \(n), "author": "@a", "text": "Save \(n)",
+         "source": "x", "url": "https://x.com/a/\(n)", "media": [{"url": "/media/\(n).jpg", "width": 10, "height": 10}]}}
         """
     }
-    let pairs = (1...count).map { p in
-        "{\"position\": \(p), \"kind\": \"matched\", \"beacon_guess\": \"left\", \"left\": \(card(p * 10)), \"right\": \(card(p * 10 + 1))}"
+    func side(_ id: Int) -> String { "{\"id\": \(id), \"source\": \"x\", \"author\": \"@b\", \"text\": \"Pair save \(id)\", \"url\": null, \"has_media\": false}" }
+    let pairList = (0..<pairs).map { p in
+        """
+        {"position": \(p + 1), "kind": "\(p == 0 ? "matched" : "repeat")", "beacon_guess": "left",
+         "question": "Which shows the working?", "left": \(side(p * 2 + 50)), "right": \(side(p * 2 + 51))}
+        """
     }
-    let picks = (0..<picked).map { "{\"position\": \($0 + 1), \"choice\": \"left\", \"why\": null}" }
-    let json = """
-    {"round_id": \(id), "axis": "working", "question": "Shows the working, or tells you about it?",
-     "chips": ["shows the working", "real numbers", "less talk"], "total": \(count),
-     "next_position": \(picked < count ? String(picked + 1) : "null"),
-     "pairs": [\(pairs.joined(separator: ","))], "picks": [\(picks.joined(separator: ","))], "preparing": false}
+    return """
+    {"session_id": "s42", "round_id": 9, "chips": ["real numbers", "I'd build it"], "cards": [\(cardList.joined(separator: ","))], "pairs": [\(pairList.joined(separator: ","))]}
     """
-    return try! JSONDecoder().decode(PickRound.self, from: Data(json.utf8))
 }
 
-private let noRound = try! JSONDecoder().decode(PickRound.self, from: Data("""
-{"round_id": null, "reason": "No round prepared. Run `beacon pick prepare`.", "preparing": false}
-""".utf8))
-
-private let building = try! JSONDecoder().decode(PickRound.self, from: Data("""
-{"round_id": null, "reason": "Preparing the next round.", "preparing": true}
-""".utf8))
-
-@MainActor
-private func until(_ condition: () -> Bool) async throws {
-    for _ in 0..<500 where !condition() { try await Task.sleep(for: .milliseconds(10)) }
-    try #require(condition())
-}
+private let summaryJSON = """
+{"session": {"checked": 3, "changed": 1, "unsure": 0},
+ "groups": [{"name": "readable", "label": "Readable passes", "checked_random": 30, "changed_random": 2, "low": 0.0213, "high": 0.163, "closed": false},
+            {"name": "Keeps", "checked_random": 4, "changed_random": 0, "low": null, "high": null, "closed": false}],
+ "flagged_next": 8,
+ "axes": [{"question": "Shows the working?", "decisive": 9, "needed": 0, "lean": 0.7, "state": "leaning", "said": 2},
+          {"question": "Made by one person?", "decisive": 3, "needed": 5, "lean": null, "state": "inferred", "said": 0}],
+ "offer": {"group": "readable", "label": "Readable passes", "items": 7065, "cost_usd": 1.41}}
+"""
 
 @MainActor
 struct PickModelTests {
-    @Test func opensOnTheFirstPairNotYetPicked() async {
-        let model = PickModel(backend: FakePick(round(count: 3, picked: 1)), poll: nil)
+    @Test func opensOnTheFirstCardWithBeaconsCallHidden() async {
+        let model = PickModel(backend: FakeCalls())
         await model.load()
-        #expect(model.current?.position == 2)
-        #expect(model.done == 1)
-        #expect(model.round?.question == "Shows the working, or tells you about it?")
+        guard case .card(let card) = model.step else { Issue.record("expected a card"); return }
+        #expect(card.item.id == 1)
+        #expect(card.item.media == ["/media/1.jpg"])
+        #expect(model.cardsTotal == 3)
+        #expect(model.cardsDone == 0)
     }
 
-    @Test func noRoundSaysWhy() async {
-        let model = PickModel(backend: FakePick(noRound), poll: nil)
+    @Test func loadKeepsYourPlaceAcrossTabSwitches() async {
+        let backend = FakeCalls()
+        let model = PickModel(backend: backend)
         await model.load()
-        #expect(model.current == nil)
-        #expect(model.round?.reason?.contains("No round prepared") == true)
+        await model.answer(.pass)
+        await model.load()
+        #expect(await backend.sessions == 1)
+        #expect(model.cardsDone == 1)
     }
 
-    @Test func aPickSendsThePositionAndChipThenMovesOn() async throws {
-        let backend = FakePick(round(count: 3))
-        let model = PickModel(backend: backend, poll: nil)
+    @Test func anAgreementMovesStraightOn() async {
+        let backend = FakeCalls()
+        let model = PickModel(backend: backend)
         await model.load()
-        model.why = "real numbers"
-        model.choose(.left)
-        #expect(model.current?.position == 2)
-        #expect(model.why == nil)
-        try await until { model.pending == 0 }
-        let sent = await backend.recorded
-        #expect(sent.map(\.1) == [1])
-        #expect(sent.first?.2 == "left")
-        #expect(sent.first?.3 == "real numbers")
+        await model.answer(.pass)
+        guard case .card(let card) = model.step else { Issue.record("expected the next card"); return }
+        #expect(card.item.id == 2)
+        #expect(model.agreements == 1)
+        #expect(model.changes.isEmpty)
     }
 
-    @Test func backTakesTheLastPickBack() async throws {
-        let backend = FakePick(round(count: 3))
-        let model = PickModel(backend: backend, poll: nil)
+    @Test func aDisagreementOpensTheTrayInSecondPerson() async {
+        let model = PickModel(backend: FakeCalls())
         await model.load()
-        model.choose(.right)
-        model.choose(.neither)
-        #expect(model.current?.position == 3)
-        await model.back()
-        #expect(model.current?.position == 2)
-        #expect(model.done == 1)
-        #expect(await backend.undos == [5])
+        await model.answer(.keep)
+        guard case .tray(let tray) = model.step else { Issue.record("expected the tray"); return }
+        #expect(tray.headline == "Beacon passed this. You'd keep it.")
+        #expect(tray.reason == "You pass on tool lists.")
+        #expect(tray.destination == "reading")
+        #expect(tray.destinations == ["reading"])
+        #expect(tray.chips == ["real numbers", "I'd build it"])
+        #expect(model.changes.count == 1)
     }
 
-    @Test func theLastPickFinishesTheRoundAndShowsTheLean() async throws {
-        let model = PickModel(backend: FakePick(round(count: 2)), poll: nil)
+    @Test func passingAKeepNamesNoDestination() async {
+        let backend = FakeCalls()
+        await backend.keep([1])
+        let model = PickModel(backend: backend)
         await model.load()
-        model.choose(.left)
-        model.choose(.skip)
-        #expect(model.current == nil)
-        #expect(model.isFinished)
-        try await until { model.summary != nil }
-        #expect(model.summary?.axes["working"]?.state == "inferred")
+        await model.answer(.pass)
+        guard case .tray(let tray) = model.step else { Issue.record("expected the tray"); return }
+        #expect(tray.headline == "Beacon kept this. You'd pass.")
+        #expect(tray.destinations.isEmpty)
     }
 
-    @Test func aFailedPickPutsThePairBackAndSaysSo() async throws {
-        let backend = FakePick(round(count: 3))
+    @Test func aChipOrNewDestinationIsSentAgainWithTheSameAnswer() async {
+        let backend = FakeCalls()
+        let model = PickModel(backend: backend)
+        await model.load()
+        await model.answer(.keep)
+        model.setChip("real numbers")
+        model.setDestination("ideas")
+        await model.continueFromTray()
+        let checks = await backend.checks
+        #expect(checks.count == 2)
+        #expect(checks[1].card == "c1" && checks[1].answer == "keep")
+        #expect(checks[1].destination == "ideas" && checks[1].chip == "real numbers")
+        guard case .card(let card) = model.step else { Issue.record("expected the next card"); return }
+        #expect(card.item.id == 2)
+    }
+
+    @Test func leavingTheTrayUntouchedSendsNothingMore() async {
+        let backend = FakeCalls()
+        let model = PickModel(backend: backend)
+        await model.load()
+        await model.answer(.keep)
+        await model.continueFromTray()
+        #expect(await backend.checks.count == 1)
+    }
+
+    @Test func canNotTellNeverOpensTheTray() async {
+        let model = PickModel(backend: FakeCalls())
+        await model.load()
+        await model.answer(.unsure)
+        guard case .card(let card) = model.step else { Issue.record("expected the next card"); return }
+        #expect(card.item.id == 2)
+        #expect(model.agreements == 0)
+    }
+
+    @Test func undoFromTheTrayRestoresTheCallAndShowsTheCardAgain() async {
+        let backend = FakeCalls()
+        let model = PickModel(backend: backend)
+        await model.load()
+        await model.answer(.keep)
+        await model.undo()
+        #expect(await backend.undoneChanges == ["101"])
+        guard case .card(let card) = model.step else { Issue.record("expected the card again"); return }
+        #expect(card.item.id == 1)
+        #expect(model.changes.isEmpty)
+        #expect(model.cardsDone == 0)
+    }
+
+    @Test func undoAfterAnAgreementStepsBackWithoutAnyChangeToRestore() async {
+        let backend = FakeCalls()
+        let model = PickModel(backend: backend)
+        await model.load()
+        await model.answer(.pass)
+        await model.undo()
+        #expect(await backend.undoneChanges.isEmpty)
+        guard case .card(let card) = model.step else { Issue.record("expected the card again"); return }
+        #expect(card.item.id == 1)
+    }
+
+    @Test func aFailedCheckStaysOnTheCard() async {
+        let backend = FakeCalls()
         await backend.setFailing(true)
-        let model = PickModel(backend: backend, poll: nil)
+        let model = PickModel(backend: backend)
         await model.load()
-        model.choose(.left)
-        try await until { model.toast?.isError == true }
-        #expect(model.current?.position == 1)
-        #expect(model.done == 0)
+        await model.answer(.keep)
+        guard case .card(let card) = model.step else { Issue.record("expected the same card"); return }
+        #expect(card.item.id == 1)
+        #expect(model.toast?.isError == true)
+        #expect(model.cardsDone == 0)
     }
 
-    @Test func nextRoundAsksForOneAndWaitsUntilItIsBuilt() async throws {
-        let backend = FakePick(noRound)
-        let model = PickModel(backend: backend, poll: .milliseconds(10))
+    @Test func pairsFollowTheCardsThenRevealBeaconsGuess() async {
+        let backend = FakeCalls()
+        let model = PickModel(backend: backend)
         await model.load()
-        await backend.setPreparing([building, building, round(id: 6, count: 2)])
-        await model.prepare()
-        #expect(await backend.prepares == [nil])
-        try await until { model.round?.roundId == 6 }
-        #expect(model.current?.position == 1)
-        #expect(!model.isPreparing)
+        for _ in 0..<3 { await model.answer(.pass) }
+        guard case .pair(let pair) = model.step else { Issue.record("expected a pair"); return }
+        #expect(pair.question == "Which shows the working?")
+        await model.pick(.same)
+        guard case .reveal(let reveal) = model.step else { Issue.record("expected the reveal"); return }
+        #expect(reveal.choice == .same)
+        #expect(reveal.pair.beaconGuess == "left")
+        let picks = await backend.picks
+        #expect(picks.first?.round == 9 && picks.first?.position == 1 && picks.first?.choice == "same")
+        await model.finishReveal()
+        guard case .pair(let second) = model.step else { Issue.record("expected the second pair"); return }
+        #expect(second.position == 2)
+    }
+
+    @Test func undoOnAPairTakesBackThePick() async {
+        let backend = FakeCalls()
+        let model = PickModel(backend: backend)
+        await model.load()
+        for _ in 0..<3 { await model.answer(.pass) }
+        await model.pick(.left)
+        await model.undo()
+        #expect(await backend.undonePicks == [9])
+        guard case .pair(let pair) = model.step else { Issue.record("expected the pair again"); return }
+        #expect(pair.position == 1)
+    }
+
+    @Test func theSessionEndsOnThePortrait() async throws {
+        let backend = FakeCalls()
+        let model = PickModel(backend: backend)
+        await model.load()
+        await model.answer(.keep)
+        await model.continueFromTray()
+        await model.answer(.pass)
+        await model.answer(.pass)
+        for _ in 0..<2 {
+            await model.pick(.left)
+            await model.finishReveal()
+        }
+        #expect(model.step == .end)
+        let summary = try #require(model.summary)
+        #expect(summary.session.checked == 3 && summary.flaggedNext == 8)
+        #expect(summary.groups[0].line == "30 checked · 2 changed · 2–16%")
+        #expect(summary.groups[1].line == "4 checked · 0 changed · not enough checks yet")
+        #expect(summary.axes[0].showsMarker)
+        #expect(!summary.axes[1].showsMarker && summary.axes[1].needed == 5)
+        #expect(model.changes.count == 1)
+    }
+
+    @Test func aChangeStaysUndoableFromTheEnd() async throws {
+        let backend = FakeCalls()
+        let model = PickModel(backend: backend)
+        await model.load()
+        await model.answer(.keep)
+        await model.continueFromTray()
+        await model.answer(.pass)
+        await model.answer(.pass)
+        for _ in 0..<2 { await model.pick(.right); await model.finishReveal() }
+        let change = try #require(model.changes.first)
+        await model.undoChange(change)
+        #expect(await backend.undoneChanges == ["101"])
+        #expect(model.changes.first?.undone == true)
+        #expect(await backend.summaries == 2)
+        // A second tap does nothing.
+        await model.undoChange(change)
+        #expect(await backend.undoneChanges.count == 1)
+    }
+
+    @Test func theOfferStartsOnlyOnYourTapAndOnce() async throws {
+        let backend = FakeCalls()
+        let model = PickModel(backend: backend)
+        await model.load()
+        for _ in 0..<3 { await model.answer(.pass) }
+        for _ in 0..<2 { await model.pick(.left); await model.finishReveal() }
+        #expect(model.summary?.offer?.costUsd == 1.41)
+        #expect(await backend.redecided.isEmpty)
+        await model.acceptOffer()
+        await model.acceptOffer()
+        #expect(await backend.redecided == ["readable"])
+        #expect(model.offerAccepted)
+    }
+
+    @Test func tenMoreStartsAFreshSessionAndDoneRests() async {
+        let backend = FakeCalls()
+        let model = PickModel(backend: backend)
+        await model.load()
+        model.doneForToday()
+        #expect(model.step == .resting)
+        await model.start()
+        #expect(await backend.sessions == 2)
+        #expect(await backend.newSessions == 1)
+        guard case .card = model.step else { Issue.record("expected a card"); return }
+    }
+
+    @Test func anOpenSessionPicksUpAfterTheCardsYouAnswered() async {
+        let backend = FakeCalls()
+        await backend.setAnswered([1, 2])
+        let model = PickModel(backend: backend)
+        await model.load()
+        guard case .card(let card) = model.step else { Issue.record("expected a card"); return }
+        #expect(card.item.id == 3)
+        #expect(model.cardsDone == 2)
+        #expect(!model.canUndo)
+    }
+
+    @Test func thePortraitShowsStartedAxesAndTheNextOneOnly() throws {
+        func axis(_ q: String, _ decisive: Int, _ state: String) -> String {
+            "{\"question\": \"\(q)\", \"decisive\": \(decisive), \"needed\": \(max(0, 8 - decisive)), \"lean\": null, \"state\": \"\(state)\", \"said\": 0}"
+        }
+        let json = """
+        {"session": {"checked": 0, "changed": 0, "unsure": 0}, "groups": [], "flagged_next": 0, "offer": null,
+         "axes": [\(axis("A", 16, "confirmed")), \(axis("B", 5, "inferred")), \(axis("C", 0, "inferred")),
+                  \(axis("D", 0, "inferred")), \(axis("E", 0, "inferred"))]}
+        """
+        let summary = try JSONDecoder().decode(CallSummary.self, from: Data(json.utf8))
+        #expect(summary.portraitAxes.shown.map(\.question) == ["A", "B", "C"])
+        #expect(summary.portraitAxes.later == 2)
+    }
+
+    @Test func aClosedGroupSaysSo() throws {
+        let json = """
+        {"name": "keeps", "label": "Keeps", "checked_random": 40, "changed_random": 0, "low": 0.0, "high": 0.04, "closed": true}
+        """
+        let group = try JSONDecoder().decode(CallSummary.Group.self, from: Data(json.utf8))
+        #expect(group.line == "40 checked · 0 changed · 0–4% · settled")
     }
 }

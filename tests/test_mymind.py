@@ -40,7 +40,9 @@ class MymindImportTests(unittest.TestCase):
         result = mymind.import_export(self.root, self.database)
         self.assertEqual(result["added"], 1)
         item = self.rows()[0]
-        self.assertEqual(item["body"], 'line one\n"line two"')
+        self.assertIsNone(item["body"], "a Notes column is the owner's note, not the post's text")
+        with closing(db.get_connection(self.database)) as conn:
+            self.assertEqual(conn.execute("SELECT body FROM owner_notes").fetchone()[0], 'line one\n"line two"')
         self.assertEqual(item["created_at"], "2026-01-02T10:30:00+00:00")
         self.assertEqual(item["saved_at"], "2026-02-03T00:00:00+00:00")
         raw = json.loads(item["raw_json"])
@@ -127,12 +129,17 @@ class MymindImportTests(unittest.TestCase):
                     [["one", " description ", "  note\n", "highlight", "Writer", "2026-01-01"]])
         mymind.import_export(self.path, self.database)
         item = self.rows()[0]
-        self.assertEqual(item["body"], "  note\n\n\nhighlight\n\n description ")
+        self.assertEqual(item["body"], "highlight\n\n description ")
         self.assertEqual(item["author"], "Writer")
+        with closing(db.get_connection(self.database)) as conn:
+            notes = [tuple(row) for row in conn.execute("SELECT item_id, kind, origin, body FROM owner_notes")]
+        self.assertEqual(notes, [(item["id"], "note", "owner", "note")])
         self.assertEqual(item["saved_at"], "2026-01-01T00:00:00+00:00")
         self.export(["id", "content"], [["one", "edited"]])
         mymind.import_export(self.path, self.database)
         self.assertEqual(self.rows()[0]["author"], "Writer")
+        with closing(db.get_connection(self.database)) as conn:
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM owner_notes").fetchone()[0], 0, "a removed note goes")
 
     def test_cli_preview_and_import_skip_config_seed_and_pipeline(self):
         self.export(["ID", "Content"], [["private-id", "PRIVATE CONTENT"]])

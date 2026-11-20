@@ -170,6 +170,23 @@ class ResidentTest(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "bad"):
                     resident.ask({"error": True})
 
+    def test_picture_names_come_back_by_save_and_an_old_or_missing_helper_gives_none(self):
+        with tempfile.TemporaryDirectory() as temp:
+            helper = Path(temp) / "beacon-embed"
+            helper.write_text(NAMES_HELPER)
+            os.chmod(helper, 0o755)
+            with patch.object(vectors, "HELPER", helper), patch.object(vectors, "resident", None):
+                self.assertEqual(vectors.names([7, 8]), {7: [("armchair", 0.12)]})
+                self.assertEqual(vectors.names([]), {})
+            with patch.object(vectors, "HELPER", Path(temp) / "missing"), patch.object(vectors, "resident", None):
+                self.assertEqual(vectors.names([7]), {})
+
+
+NAMES_HELPER = """#!/usr/bin/env python3
+import json, sys
+assert sys.argv[1:4] == ["names", "--ids", "7,8"], sys.argv
+print(json.dumps({"7": [["armchair", 0.12]]}))
+"""
 
 SILENT_HELPER = """#!/usr/bin/env python3
 import sys, time

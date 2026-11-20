@@ -257,7 +257,7 @@ END;
 
 # Library word search. A design post on X often says little ("this is so clean"), so a save is found by
 # the poster's words (title, text, author, the post it quotes) and by the words Beacon wrote about it
-# (gist takeaway, pile takeaway, one-liner, tags). Porter stemming lets "drag" find "dragging". Kept
+# (gist takeaway, pile takeaway, one-liner, tags), and by the owner's own notes and tags. Porter stemming lets "drag" find "dragging". Kept
 # apart from items_fts, which triage, routing and meaning search use as measured.
 LIBRARY_FTS_SCHEMA = "CREATE VIRTUAL TABLE IF NOT EXISTS library_fts USING fts5(words, about, tokenize='porter unicode61');"
 _LIBRARY_ROW = """
@@ -266,7 +266,8 @@ SELECT i.id,
        COALESCE(CASE WHEN json_valid(i.raw_json) THEN json_extract(i.raw_json, '$.quotedTweet.text') END, ''),
        COALESCE((SELECT takeaway || ' ' || kind FROM item_gists WHERE item_id = i.id), '') || ' ' ||
        COALESCE((SELECT takeaway FROM pile_decisions WHERE item_id = i.id), '') || ' ' || COALESCE(i.one_liner, '') || ' ' ||
-       COALESCE((SELECT group_concat(t.name, ' ') FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = i.id), '')
+       COALESCE((SELECT group_concat(t.name, ' ') FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = i.id), '') || ' ' ||
+       COALESCE((SELECT group_concat(n.body || ' ' || COALESCE(n.context, ''), ' ') FROM owner_notes n WHERE n.item_id = i.id), '')
 FROM items i"""
 _REFRESH = "DELETE FROM library_fts WHERE rowid = {id}; INSERT INTO library_fts(rowid, words, about) " + _LIBRARY_ROW + " WHERE i.id = {id};"
 _LIBRARY_TRIGGERS = [  # (name, event, the id it refreshes, whether the save itself is gone)
@@ -281,6 +282,10 @@ _LIBRARY_TRIGGERS = [  # (name, event, the id it refreshes, whether the save its
     ("pile_delete", "AFTER DELETE ON pile_decisions", "OLD.item_id", False),
     ("tag_insert", "AFTER INSERT ON item_tags", "NEW.item_id", False),
     ("tag_delete", "AFTER DELETE ON item_tags", "OLD.item_id", False),
+    ("note_insert", "AFTER INSERT ON owner_notes", "NEW.item_id", False),
+    ("note_update", "AFTER UPDATE ON owner_notes", "NEW.item_id", False),
+    ("note_moved", "AFTER UPDATE OF item_id ON owner_notes WHEN OLD.item_id != NEW.item_id", "OLD.item_id", False),
+    ("note_delete", "AFTER DELETE ON owner_notes", "OLD.item_id", False),
 ]
 
 
@@ -293,6 +298,13 @@ def _library_search(conn):
         conn.execute("BEGIN IMMEDIATE")
         new = not conn.execute("SELECT 1 FROM sqlite_master WHERE name='library_fts'").fetchone()
         conn.execute(LIBRARY_FTS_SCHEMA)
+        # Triggers made before owner notes would rewrite a row without them, so they are made again and the index refilled.
+        old = conn.execute("SELECT sql FROM sqlite_master WHERE type='trigger' AND name='library_fts_items_insert'").fetchone()
+        if old and "owner_notes" not in old[0]:
+            for (name,) in conn.execute("SELECT name FROM sqlite_master WHERE type='trigger' AND name LIKE 'library_fts_%'").fetchall():
+                conn.execute(f"DROP TRIGGER {name}")
+            conn.execute("DELETE FROM library_fts")
+            new = True
         if new:
             conn.execute("INSERT INTO library_fts(rowid, words, about) " + _LIBRARY_ROW)
         for name, event, item_id, gone in _LIBRARY_TRIGGERS:
@@ -379,13 +391,54 @@ MIGRATIONS = [
     "CREATE TABLE IF NOT EXISTS pick_log (id INTEGER PRIMARY KEY AUTOINCREMENT, round_id INTEGER NOT NULL "
     "REFERENCES pick_rounds(id), position INTEGER NOT NULL, left_id INTEGER NOT NULL, right_id INTEGER NOT NULL, "
     "axis TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('matched','foil','cross','repeat')), "
-    "choice TEXT NOT NULL CHECK(choice IN ('left','right','neither','skip')), why TEXT, "
+    "choice TEXT NOT NULL CHECK(choice IN ('left','right','neither','skip','same')), why TEXT, "
     "beacon_guess TEXT NOT NULL CHECK(beacon_guess IN ('left','right','none')), repeat_of INTEGER, shown_at TEXT, "
     "chosen_at TEXT NOT NULL, origin TEXT NOT NULL DEFAULT 'you-deliberate', UNIQUE(round_id, position))",
+    # Which scorer made a pick score or built a round: NULL before stricter `applies` (lib/pick.py SCORER).
+    "ALTER TABLE pick_scores ADD COLUMN scorer INTEGER",
+    "ALTER TABLE pick_rounds ADD COLUMN scorer INTEGER",
+    # Calls (lib/calls.py): sessions of cards, your checks of Beacon's keep/pass calls, the changes they made
+    # (with what to put back), nightly suspect scores, neighbours flagged by a change, and group re-decides.
+    "CREATE TABLE IF NOT EXISTS call_sessions (id TEXT PRIMARY KEY, size INTEGER NOT NULL, cards_json TEXT NOT NULL, "
+    "created_at TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS call_checks (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL "
+    "REFERENCES call_sessions(id), card_id TEXT NOT NULL, item_id INTEGER NOT NULL REFERENCES items(id), "
+    "stratum TEXT NOT NULL CHECK(stratum IN ('readable','near-empty','keeps')), "
+    "kind TEXT NOT NULL CHECK(kind IN ('random','suspect','repeat')), repeat_of INTEGER, "
+    "beacon_outcome TEXT NOT NULL CHECK(beacon_outcome IN ('do','read','reference','pass')), "
+    "your_outcome TEXT CHECK(your_outcome IN ('keep','pass')), unsure INTEGER NOT NULL DEFAULT 0, destination TEXT, "
+    "chip TEXT, checked_at TEXT NOT NULL, voided_at TEXT)",
+    "CREATE INDEX IF NOT EXISTS call_checks_item ON call_checks(item_id)",
+    "CREATE INDEX IF NOT EXISTS call_checks_session ON call_checks(session_id, card_id)",
+    "CREATE TABLE IF NOT EXISTS call_overrides (id INTEGER PRIMARY KEY AUTOINCREMENT, item_id INTEGER NOT NULL "
+    "REFERENCES items(id), check_id INTEGER REFERENCES call_checks(id), "
+    "source TEXT NOT NULL CHECK(source IN ('check','redecide')), old_outcome TEXT NOT NULL, old_destination TEXT, "
+    "old_status TEXT, old_status_note TEXT, old_status_at TEXT, old_routes_json TEXT NOT NULL DEFAULT '[]', "
+    "new_outcome TEXT NOT NULL, new_destination TEXT, new_status TEXT, at TEXT NOT NULL, undone_at TEXT, flagged_at TEXT)",
+    "CREATE INDEX IF NOT EXISTS call_overrides_item ON call_overrides(item_id)",
+    "CREATE TABLE IF NOT EXISTS call_suspects (item_id INTEGER PRIMARY KEY REFERENCES items(id), score REAL NOT NULL, "
+    "neighbours INTEGER NOT NULL, suggested_destination TEXT, ranked_at TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS call_flags (item_id INTEGER PRIMARY KEY REFERENCES items(id), change_id INTEGER NOT NULL "
+    "REFERENCES call_overrides(id), flagged_at TEXT NOT NULL, used_session TEXT)",
+    "CREATE TABLE IF NOT EXISTS call_redecides (id INTEGER PRIMARY KEY AUTOINCREMENT, stratum TEXT NOT NULL, "
+    "started_at TEXT NOT NULL, finished_at TEXT, result_json TEXT)",
     # Generated Library layouts (lib/compose.py): what was offered for which search, and what you did with it.
     "CREATE TABLE IF NOT EXISTS compose_log (id INTEGER PRIMARY KEY AUTOINCREMENT, search TEXT NOT NULL, "
     "ids_json TEXT NOT NULL, layout_json TEXT, why TEXT, model TEXT NOT NULL, cost_usd REAL, created_at TEXT NOT NULL, "
     "choice TEXT CHECK(choice IN ('kept','dismissed','ignored')), chosen_at TEXT)",
+    # The owner's own tags and notes from mymind, Readwise and Granola (lib/owner_notes.py), kept apart from
+    # anything a model wrote. owner_digest is a model's summary of what the owner said (Granola).
+    "CREATE TABLE IF NOT EXISTS owner_notes (id INTEGER PRIMARY KEY, item_id INTEGER NOT NULL REFERENCES items(id), "
+    "source TEXT NOT NULL, external_id TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('note','tag')), "
+    "origin TEXT NOT NULL CHECK(origin IN ('owner','owner_digest')), body TEXT NOT NULL, context TEXT, "
+    "created_at TEXT, synced_at TEXT NOT NULL, UNIQUE(source, external_id))",
+    "CREATE INDEX IF NOT EXISTS owner_notes_item ON owner_notes(item_id)",
+    # The owner's vocabulary (lib/vocabulary.py): which projects and areas an owner term points at, and which
+    # unresolved terms a model was already asked about against which set of projects and areas.
+    "CREATE TABLE IF NOT EXISTS owner_vocabulary (term TEXT NOT NULL, target TEXT NOT NULL, "
+    "origin TEXT NOT NULL CHECK(origin IN ('owner','model_proposed')), created_at TEXT NOT NULL, PRIMARY KEY(term, target))",
+    "CREATE TABLE IF NOT EXISTS vocab_proposals (term TEXT NOT NULL, slug_set TEXT NOT NULL, proposed_at TEXT NOT NULL, "
+    "PRIMARY KEY(term, slug_set))",
 ]
 
 VALID_STATUSES = {"new", "queued", "reviewed", "tried", "adopted", "rejected", "stale", "interest", "pending"}
@@ -394,7 +447,8 @@ FILED_NOTES = ("read", REFERENCE)  # adopted with one of these, a save is filed 
 
 # SQLite can't change a CHECK in place, so a table made before references existed is rebuilt with the wider list.
 WIDENED_CHECKS = [("item_gists", "('do','read','skip')", "('do','read','skip','reference')"),
-                  ("auto_actions", "('pass', 'read')", "('pass', 'read', 'reference')")]
+                  ("auto_actions", "('pass', 'read')", "('pass', 'read', 'reference')"),
+                  ("pick_log", "('left','right','neither','skip')", "('left','right','neither','skip','same')")]
 
 
 def _widen_checks(conn):
@@ -536,7 +590,9 @@ def get_unclassified_items(limit=50, since=None):
     date_filter = ("AND COALESCE(saved_at, created_at) GLOB '[0-9][0-9][0-9][0-9]-*' "
                    "AND COALESCE(saved_at, created_at) >= ?") if since else ""
     rows = conn.execute(
-        f"""SELECT id, source, external_id, title, body, url, author, one_liner FROM items
+        f"""SELECT id, source, external_id, title, body, url, author, one_liner,
+                  (SELECT group_concat(n.kind || ': ' || n.body, ' | ') FROM owner_notes n
+                   WHERE n.item_id = items.id AND n.origin = 'owner') AS owner_notes FROM items
            WHERE classified_at IS NULL AND status='new'
              AND NOT EXISTS(SELECT 1 FROM intake_reviews r WHERE r.item_id=items.id)
              {date_filter}
@@ -601,7 +657,7 @@ def fts_query(query):
     return " ".join('"' + term.replace('"', '""') + '"' for term in query.split())
 
 
-def get_library(offset=0, limit=200, area=None, query=None, ranked=None):
+def get_library(offset=0, limit=200, area=None, query=None, ranked=None, noted=False, hide=()):
     """Mosaic's feed: every save with a picture, plus GitHub stars, newest first.
 
     Rejected items stay out. A video comes through as its poster image, since Mosaic stores
@@ -609,14 +665,19 @@ def get_library(offset=0, limit=200, area=None, query=None, ranked=None):
     on one above the same 0.6 floor triage uses; `area` keeps only that shelf, and `query` keeps
     saves where every word (in any of its forms) is in the post or in what Beacon wrote about it
     (see LIBRARY_FTS_SCHEMA), best match first. `ranked` (item ids, best
-    first, from a meaning or similarity search) keeps only those saves, in that order.
+    first, from a meaning or similarity search) keeps only those saves, in that order. `noted` also
+    keeps saves outside the feed that carry the owner's own notes (a mymind card, a Readwise book), for agents.
+    `hide` leaves out these save ids.
     """
     shelf = "a.area != 'none' AND a.probability >= 0.6"
-    where = "i.in_library = 1"
-    params = ()
+    where = ("(i.in_library = 1 OR (i.status != 'rejected' AND EXISTS(SELECT 1 FROM owner_notes n WHERE n.item_id = i.id)))"
+             if noted else "i.in_library = 1")
+    params = tuple(hide)
+    if hide:
+        where += f" AND i.id NOT IN ({','.join('?' * len(params))})"
     if area:
         where += f" AND {shelf} AND a.area = ?"
-        params = (area,)
+        params = (*params, area)
     order = "i.id DESC"
     joined = "FROM items i LEFT JOIN area_reviews a ON a.item_id = i.id"
     if query and query.strip():
@@ -641,7 +702,8 @@ def get_library(offset=0, limit=200, area=None, query=None, ranked=None):
         else:
             total = conn.execute(f"SELECT COUNT(*) {joined}", params).fetchone()[0]
             rows = conn.execute(f"{columns} {joined} ORDER BY {order} LIMIT ? OFFSET ?", (*params, limit, offset)).fetchall()
-    items = [library_entry(row) for row in rows]
+        notes = owner_notes_for(conn, [row["id"] for row in rows])
+    items = [library_entry(row, notes.get(row["id"])) for row in rows]
     next_offset = offset + len(rows) if offset + len(rows) < total else None
     return {"total": total, "items": items, "next_offset": next_offset}
 
@@ -660,8 +722,23 @@ def is_held(item_id):
         conn.close()
 
 
-def library_entry(row):
-    """One save as the Library, the feed and the MCP tools show it; `row` has the get_library columns."""
+def owner_notes_for(conn, ids):
+    """{item id: [the owner's notes and tags on it]}, oldest first."""
+    found = {}
+    for start in range(0, len(ids), 500):
+        chunk = list(ids[start:start + 500])
+        for row in conn.execute(f"SELECT item_id, source, kind, origin, body FROM owner_notes WHERE item_id IN "
+                                f"({','.join('?' * len(chunk))}) ORDER BY id", chunk):
+            found.setdefault(row["item_id"], []).append(
+                {"source": row["source"], "kind": row["kind"], "origin": row["origin"], "body": row["body"]})
+    return found
+
+
+def library_entry(row, owner_notes=None):
+    """One save as the Library, the feed and the MCP tools show it; `row` has the get_library columns.
+
+    `owner_notes` are the owner's own tags and notes on it (see owner_notes_for), labeled by origin.
+    """
     preview = item_preview(row["source"], row["raw_json"], row["body"])
     return {
         "id": row["id"], "source": row["source"], "url": row["url"], "title": row["title"],
@@ -670,6 +747,7 @@ def library_entry(row):
         "media": [{"url": m["preview_url"] if m["type"] in ("video", "animated_gif") else m["url"],
                    "width": m.get("width"), "height": m.get("height")}
                   for m in preview.get("media") or [] if m.get("url")],
+        "owner_notes": owner_notes or [],
     }
 
 
