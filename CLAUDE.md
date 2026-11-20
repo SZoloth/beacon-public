@@ -47,6 +47,12 @@ scripts/land 43 --after 41 42  # a PR stacked on PRs that already squash-merged
 ```
 It works in its own worktree and stops on any other conflict, a failing test or a failed push.
 
+## Health check
+```bash
+scripts/doctor               # launchd jobs, phone server, Keychain sign-ins, pinned Python, git sync, hosted deploy, public release
+```
+The Monday job runs it last with `--notify`. Exit 1 means a FAIL line needs fixing; warn lines don't fail it.
+
 ## Installing the apps
 ```bash
 app/one/build-mac.sh          # Mac app into ~/Applications

@@ -6,7 +6,9 @@
 set -u
 # A failed score must not hide behind the summary line it pipes into.
 set -o pipefail
-export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+# ~/.local/bin holds claude, pnpm and with-secret; launchd starts jobs without it. Last, so it adds
+# tools without replacing ones already found (its node is older than Homebrew's).
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin"
 cd "${0:A:h}/.." || exit 1
 mkdir -p logs
 # The Monday job and the app's Sync button both run this; a second copy exits 75 instead of overlapping.
@@ -52,6 +54,11 @@ python3 beacon.py vectors --limit 2000 || echo "vectors skipped; the error above
 python3 beacon.py brief --allow-upload || failed+=(brief)
 # Sweep only ages out long-untouched items by date, so it is safe after any failed stage.
 python3 beacon.py sweep || failed+=(sweep)
+# Every part that runs on its own (jobs, phone server, sign-ins, deploys); a failure sends a notification.
+# Before "=== done", because the app's Sync shows the last line.
+if [[ -x scripts/doctor ]]; then
+  scripts/python scripts/doctor --notify || echo "Doctor found a problem; see the FAIL lines above."
+fi
 echo "=== done"
 (( sync_ok )) || failed=(sync $failed)
 if (( $#failed )); then

@@ -1,0 +1,152 @@
+#!/usr/bin/env python3
+"""Is every part of Beacon that runs on its own still working? One line per check; exit 1 if any failed.
+
+Checks the launchd jobs' last runs, the phone server, the Keychain sign-ins the Monday job needs,
+the pinned Python, git sync with GitHub, the hosted Worker's deploy and the public release.
+Warnings (open PRs, a public release behind main) don't fail the run. `--notify` also sends a
+macOS notification when something failed, for the weekly job.
+"""
+import json
+import os
+import shutil
+import subprocess
+import sys
+import urllib.request
+from datetime import datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+HOME = Path.home()
+JOBS = {  # label: True when the job should be running all the time
+    "com.example.beacon-serve": True,
+    "com.example.beacon-weekly": False,
+    "com.example.beacon-calls-rank": False,
+    "com.example.beacon-python-bump": False,
+}
+KEYS = ("READWISE_ACCESS_TOKEN", "BEACON_X_AUTH_TOKEN", "BEACON_X_CT0")
+
+
+def run(*command, cwd=ROOT, timeout=60):
+    try:
+        done = subprocess.run(command, cwd=cwd, capture_output=True, text=True, timeout=timeout, check=False)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        return 1, "", str(error)
+    return done.returncode, done.stdout.strip(), done.stderr.strip()
+
+
+def launchd_state(text):
+    """(running, last exit code or None) from `launchctl print` output."""
+    running = any(line.strip() == "state = running" for line in text.splitlines())
+    code = None
+    for line in text.splitlines():
+        name, _, value = line.strip().partition(" = ")
+        if name == "last exit code" and value.lstrip("-").isdigit():
+            code = int(value)
+    return running, code
+
+
+def check_jobs():
+    for label, always_on in JOBS.items():
+        status, out, _ = run("launchctl", "print", f"gui/{os.getuid()}/{label}")
+        if status != 0:
+            yield "fail", label, "not loaded"
+            continue
+        running, code = launchd_state(out)
+        if always_on:
+            yield ("ok", label, "running") if running else ("fail", label, f"not running (last exit {code})")
+        elif running:
+            yield "ok", label, "running now"
+        elif code in (None, 0):
+            yield "ok", label, "last run exited 0" if code == 0 else "hasn't run yet"
+        else:
+            yield "fail", label, f"last run exited {code}"
+
+
+def check_server():
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:8765/calls/summary", timeout=30) as response:
+            json.load(response)
+        yield "ok", "phone server", "answers on this Mac"
+    except Exception as error:  # any failure here means the phone can't reach Beacon
+        yield "fail", "phone server", f"no answer: {error}"
+
+
+def check_keys():
+    tool = HOME / ".local/bin/with-secret"
+    for name in KEYS:
+        status, _, _ = run(str(tool), "--check", name) if tool.exists() else (1, "", "")
+        fix = "scripts/x-keys" if name.startswith("BEACON_X") else f"with-secret --add {name}"
+        yield ("ok", name, "in Keychain") if status == 0 else ("fail", name, f"missing; run {fix}")
+
+
+def check_python():
+    status, out, _ = run(str(ROOT / "scripts/python"), "-c", "import _strptime, sqlite3, sys; print(sys.version.split()[0])")
+    yield ("ok", "pinned Python", out) if status == 0 else ("fail", "pinned Python", "doesn't start; run scripts/bump-python")
+
+
+def check_git():
+    run("git", "fetch", "-q", "origin")
+    _, ahead_behind, _ = run("git", "rev-list", "--left-right", "--count", "main...origin/main")
+    ahead, behind = (ahead_behind.split() + ["?", "?"])[:2]
+    if (ahead, behind) == ("0", "0"):
+        yield "ok", "main", "matches GitHub"
+    else:
+        yield "fail", "main", f"{ahead} ahead, {behind} behind origin/main"
+    if shutil.which("gh"):
+        _, out, _ = run("gh", "pr", "list", "--state", "open", "--json", "number,title")
+        prs = json.loads(out or "[]")
+        if prs:
+            yield "warn", "open PRs", ", ".join(f"#{p['number']} {p['title'][:50]}" for p in prs)
+
+
+def check_hosted():
+    _, changed, _ = run("git", "log", "-1", "--format=%cI", "origin/main", "--", "hosted")
+    if not changed:
+        return
+    # The weekly job's PATH leaves out ~/.local/bin, where pnpm is installed.
+    pnpm = shutil.which("pnpm") or str(HOME / ".local/bin/pnpm")
+    status, out, err = run(pnpm, "exec", "wrangler", "deployments", "list", "--json", cwd=ROOT / "hosted", timeout=180)
+    try:
+        deployed = max(d["created_on"] for d in json.loads(out))
+    except (ValueError, KeyError, TypeError):
+        yield "warn", "hosted Worker", f"couldn't read deployments: {(err or out)[-160:]}"
+        return
+    if datetime.fromisoformat(deployed.replace("Z", "+00:00")) >= datetime.fromisoformat(changed):
+        yield "ok", "hosted Worker", "deployed after the last hosted change"
+    else:
+        yield "fail", "hosted Worker", "hosted/ changed after the last deploy; run `pnpm run deploy` in hosted/"
+
+
+def check_public():
+    if not shutil.which("gh"):
+        return
+    # The public copy lives next to this repo on GitHub, as <owner>/beacon-public.
+    _, origin, _ = run("git", "remote", "get-url", "origin")
+    owner = origin.rstrip("/").removesuffix(".git").replace(":", "/").split("/")[-2] if origin else ""
+    status, out, _ = run("gh", "api", f"repos/{owner}/beacon-public/commits?per_page=1", "--jq", ".[0].commit.committer.date")
+    if status != 0 or not out:
+        yield "warn", "public release", "couldn't read it"
+        return
+    _, count, _ = run("git", "rev-list", "--count", f"--since={out}", "origin/main", "--", "lib", "beacon.py", "app", "scripts")
+    if count in ("", "0"):
+        yield "ok", "public release", "has every code change on main"
+    else:
+        yield "warn", "public release", f"{count} code commits on main since it; re-export with scripts/export_public.py"
+
+
+def main(argv):
+    marks = {"ok": "ok  ", "warn": "warn", "fail": "FAIL"}
+    failed = []
+    for check in (check_jobs, check_server, check_keys, check_python, check_git, check_hosted, check_public):
+        for level, name, detail in check():
+            print(f"{marks[level]}  {name}: {detail}")
+            if level == "fail":
+                failed.append(name)
+    if failed and "--notify" in argv:
+        message = f"Beacon doctor: {', '.join(failed)}. Run scripts/doctor for details."
+        run("osascript", "-e", f"display notification {json.dumps(message)} with title \"Beacon\"")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
