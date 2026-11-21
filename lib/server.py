@@ -30,7 +30,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from datetime import datetime
 
-from . import activate, adds, autopilot, briefs, calls, db, pick, vectors
+from . import activate, adds, autopilot, briefs, calls, db, pick, send_to, vectors
 
 ROOT = Path(__file__).resolve().parent.parent
 NETWORKS = [ipaddress.ip_network(n) for n in ("127.0.0.0/8", "::1/128", "100.64.0.0/10", "fd7a:115c:a1e0::/48")]
@@ -207,10 +207,32 @@ def _keep(args, run):
     return kept
 
 
+def _send_to(kept, url, body):
+    """The share sheet's part of POST /add: queue the save in the projects picked, keep the why, copy it to mymind."""
+    projects, note = body.get("projects") or [], body.get("note") or ""
+    if not isinstance(projects, list) or not all(isinstance(slug, str) for slug in projects) or len(projects) > 5:
+        raise ValueError("projects must be a list of at most 5 project slugs")
+    if not isinstance(note, str):
+        raise ValueError("note must be text")
+    if not projects and not note.strip():
+        return kept
+    with _writes:
+        sent = send_to.route_save(kept["id"], [_slug(slug, "project") for slug in projects], note)
+
+    def mirror():
+        try:
+            send_to.mirror_to_mymind(url, sent["routed"], note)
+        except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired) as error:
+            print(f"mymind copy of {url} failed: {error}", file=sys.stderr)
+    threading.Thread(target=mirror, daemon=True).start()  # the phone gets its answer without waiting on mymind
+    return {**kept, **sent}
+
+
 def _add(body, run):
-    """POST /add: {"url": ...} or {"image": base64, "width", "height", "note"}."""
+    """POST /add: {"url": ..., "projects"?: [slug], "note"?: why} or {"image": base64, "width", "height", "note"}."""
     if isinstance(body.get("url"), str) and body["url"].strip():
-        return _keep(["--url", body["url"].strip()[:2000]], run)
+        url = body["url"].strip()[:2000]
+        return _send_to(_keep(["--url", url], run), url, body)
     if not isinstance(body.get("image"), str):
         raise ValueError("send a url or an image")
     try:
@@ -251,6 +273,9 @@ def route(method, path, body, run=run_cli):
         return 200, {"database": str(Path(db.current_path()).resolve()), "checkout": str(ROOT)}
     if method == "GET" and path == "/queue":
         return 200, db.get_triage_queue()
+    if method == "GET" and path == "/projects":
+        # The share sheet's list: active projects, best guess for the shared text first.
+        return 200, send_to.ranked(parse_qs(query).get("text", [""])[0][:2000])
     if method == "GET" and path == "/briefs":
         return 200, briefs.list_plans()
     if method == "GET" and path == "/handled":

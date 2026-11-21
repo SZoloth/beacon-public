@@ -6,6 +6,7 @@ Bookmark & Star Intake System. Syncs X bookmarks and GitHub stars into SQLite, A
 - Python 3 stdlib only (no pip deps)
 - `hosted/` is the exception: a TypeScript Cloudflare Workers app for the hosted beta (`cd hosted && pnpm install --frozen-lockfile && pnpm test`)
 - Long-running processes (the MCP server registered in each Claude Code profile's `.claude.json` and in `~/.codex/config.toml`, and the `com.example.beacon-serve` launchd job) start through `scripts/python`. It runs a uv-managed Python through the link `~/.local/share/beacon/python`, pinned to one patch release, because Homebrew upgrades delete the old Python and broke running servers on 2026-11-19 (`No module named '_strptime'`). `scripts/bump-python` runs monthly (launchd `com.example.beacon-python-bump`, log `~/Library/Logs/beacon-python-bump.log`): it installs the newest 3.14 patch, runs the tests on it and moves the link only if they pass; a failure sends a macOS notification
+- `com.example.beacon-mymind` (launchd, daily 06:30, log `logs/mymind.log`) runs `beacon sync --source mymind`, so mymind notes, tags and cards reach agents within a day instead of at the Monday run. The plist lives only in `~/Library/LaunchAgents`, like the other jobs; `scripts/doctor` checks it
 - SQLite with FTS5 for search
 - `claude --print --model sonnet` for classification
 - Every headless `claude` run goes through `lib/claude_accounts.py`: config `claude_accounts` lists the subscriptions in order (`default`, then a `CLAUDE_CONFIG_DIR` such as `~/.claude-second`). One that reports a usage limit hands the call to the next and is tried last for 6 hours (`.claude-limits.json` beside the database)
@@ -22,6 +23,8 @@ beacon sources [--db PATH]  # live sources and file handoffs; does not fetch
 beacon match [--db PATH] [--write]  # project and practice recommendations; does not route or execute
 beacon classify
 beacon route [--dry-run]
+beacon route-tags [--dry-run]   # owner tags that name a project route their saves there, no model call
+beacon quick-intake [--dry-run] # mymind sync, then route-tags; for a 15-minute launchd job
 beacon search "query"
 beacon list [--workstream X] [--source X] [--intent X] [--unrouted]
 beacon stats

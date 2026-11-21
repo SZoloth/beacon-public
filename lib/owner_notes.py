@@ -26,6 +26,10 @@ from lib import db, mymind, settings
 SYNCS = {"mymind": "mymind_cli", "readwise-notes": "readwise_cli", "granola-digests": "granola_digests"}
 
 X_STATUS = re.compile(r"^https?://(?:www\.|mobile\.)?(?:x|twitter)\.com/[^/?#]+/status(?:es)?/(\d+)", re.I)
+# Every top-level field mymind's API returned on 2026-11-20. Beacon keeps each object whole in raw_json; a sync lists any
+# other field in its result (unknown_fields), so a new one gets looked at instead of sitting unread.
+MYMIND_FIELDS = {"id", "title", "summary", "flags", "mainEntity", "entityType", "notes", "tags", "source", "content",
+                 "screenshot", "blob", "bumped", "created", "modified"}
 MYMIND_OWNER_TAG = 8  # bit in a mymind tag's flags: the owner added it (2 means mymind's AI did)
 _SCOPE = re.compile(r"^(.*?):(?:note|tag|idea)(?::|$)")
 
@@ -44,9 +48,10 @@ def _x_ids(*urls):
 
 
 def mymind_records(objects):
-    """Records for the mymind objects the owner annotated: a note, or a tag the owner added.
+    """A record per mymind object. Its notes are the owner's notes and the tags the owner added.
 
-    mymind's own AI tags are left out; they say what mymind thinks, not what the owner meant.
+    mymind's own AI tags are not notes; they say what mymind thinks, not what the owner meant. A card with no
+    notes is still kept (`keep`) as a save agents can search, unless Beacon already has the X post it copies.
     """
     records = []
     for obj in objects:
@@ -60,8 +65,6 @@ def mymind_records(objects):
             if name and (tag.get("flags") or 0) & MYMIND_OWNER_TAG and name.lower() not in tags:
                 tags.add(name.lower())
                 notes.append(_note(f"{obj['id']}:tag:{name.lower()}", "tag", name))
-        if not notes:
-            continue
         entity = obj.get("mainEntity") if isinstance(obj.get("mainEntity"), dict) else {}
         content = entity.get("content") if isinstance(entity.get("content"), dict) else obj.get("content") or {}
         author = entity.get("author") if isinstance(entity.get("author"), dict) else {}
@@ -71,9 +74,18 @@ def mymind_records(objects):
             "body": (content.get("body") or "").strip() or obj.get("summary"), "url": url,
             "author": author.get("name"), "created_at": obj.get("created"),
             "raw_json": json.dumps({"import_format": "mymind-cli-v1", "object": obj}, ensure_ascii=False),
-            "x_ids": _x_ids(url), "scopes": [obj["id"]], "notes": notes,
+            "x_ids": _x_ids(url), "scopes": [obj["id"]], "notes": notes, "keep": True,
         })
     return records
+
+
+def _x_post(conn, x_ids):
+    """The id of the X post Beacon has among these status ids, or None."""
+    for status in x_ids:
+        found = conn.execute("SELECT id FROM items WHERE source='x' AND external_id=?", (status,)).fetchone()
+        if found:
+            return found[0]
+    return None
 
 
 def _item_id(conn, record, now):
@@ -82,15 +94,17 @@ def _item_id(conn, record, now):
     Its own save starts as `interest`, so no stage that sends new saves to a model (areas, classify, pile)
     picks it up: a Granola title can name people. An existing item keeps its status.
     """
-    for status in record["x_ids"]:
-        found = conn.execute("SELECT id FROM items WHERE source='x' AND external_id=?", (status,)).fetchone()
-        if found:
-            return found[0], True
+    post = _x_post(conn, record["x_ids"])
+    if post:
+        return post, True
     conn.execute(
         "INSERT INTO items (source, external_id, title, body, url, author, raw_json, created_at, saved_at, synced_at, status) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'interest') ON CONFLICT(source, external_id) DO UPDATE SET "
         "title=excluded.title, body=excluded.body, url=excluded.url, author=COALESCE(excluded.author, items.author), "
-        "raw_json=excluded.raw_json, synced_at=excluded.synced_at",
+        # A fresh raw_json keeps the save's `listed` (see _mark_listed), so agents never lose it mid-sync.
+        "raw_json=CASE WHEN json_valid(items.raw_json) AND json_type(items.raw_json, '$.listed') IS NOT NULL "
+        "AND json_valid(excluded.raw_json) THEN json_set(excluded.raw_json, '$.listed', json_extract(items.raw_json, '$.listed')) "
+        "ELSE excluded.raw_json END, synced_at=excluded.synced_at",
         (record["source"], record["external_id"], record["title"], record["body"], record["url"], record["author"],
          record["raw_json"], record["created_at"], record["created_at"], now))
     return conn.execute("SELECT id FROM items WHERE source=? AND external_id=?",
@@ -114,6 +128,9 @@ def store(source, records, *, complete, db_path=None, owns=lambda external_id: T
         for record in records:
             scopes.update(record["scopes"])
             if not record["notes"]:
+                if record.get("keep") and not _x_post(conn, record["x_ids"]):
+                    _item_id(conn, record, now)
+                    result["kept"] = result.get("kept", 0) + 1
                 continue
             item_id, attached = _item_id(conn, record, now)
             result["annotated"] += 1
@@ -173,14 +190,35 @@ def sync_mymind(cli_dir, db_path=None, run=_run):
         raise RuntimeError("mymind listed no objects, so no notes were changed.")
     result = store("mymind", mymind_records(objects), complete=True, db_path=db_path,
                    owns=lambda external_id: not external_id.endswith(mymind.EXPORT_NOTE))
+    result["listed"] = _mark_listed({obj["id"] for obj in objects}, db_path)
+    unknown = sorted({field for obj in objects for field in obj} - MYMIND_FIELDS)
+    if unknown:
+        result["unknown_fields"] = unknown
     _record_success("mymind", result, db_path)
     return result
+
+
+def _mark_listed(listed, db_path):
+    """Set `listed` in each mymind CLI save's raw_json: 1 while mymind still has the card and Beacon lacks the X
+    post it copies. Agents find a save without notes only while it is listed (db.get_library). Returns the count."""
+    with closing(db.get_connection(db_path)) as conn, conn:
+        rows = conn.execute("SELECT id, external_id, url, json_extract(raw_json, '$.listed') AS was FROM items "
+                            "WHERE source='mymind' AND json_valid(raw_json) "
+                            "AND json_extract(raw_json, '$.import_format') = 'mymind-cli-v1'").fetchall()
+        count = 0
+        for row in rows:
+            now = int(row["external_id"] in listed and not _x_post(conn, _x_ids(row["url"])))
+            count += now
+            if row["was"] != now:
+                conn.execute("UPDATE items SET raw_json = json_set(raw_json, '$.listed', ?) WHERE id = ?", (now, row["id"]))
+    return count
 
 
 def _record_success(key, result, db_path):
     """The doctor fails a source whose last success is over a week old, so a source that stops is noticed."""
     with closing(db.get_connection(db_path)) as conn:
-        _save_state(conn, key, {}, result.get("annotated", 0))
+        _save_state(conn, key, {"unknown_fields": result["unknown_fields"]} if result.get("unknown_fields") else {},
+                    result.get("annotated", 0))
 
 
 READWISE_FIELDS = ["text", "note", "tags", "url", "highlighted_at", "updated", "book_id", "book_title", "book_author",

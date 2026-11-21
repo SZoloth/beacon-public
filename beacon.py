@@ -595,6 +595,28 @@ def cmd_route(args):
     route_items(dry_run=getattr(args, "dry_run", False))
 
 
+def cmd_route_tags(args):
+    """Owner tags that name a project route their saves there, no model call (lib/tag_routes.py)."""
+    from lib import tag_routes
+    print(json.dumps(tag_routes.route_tagged(dry_run=args.dry_run), ensure_ascii=False))
+
+
+def cmd_quick_intake(args):
+    """The fast lane: sync mymind, then route tagged saves. Meant to run every 15 minutes on the Mac."""
+    from lib import tag_routes
+    config = load_config()
+    source = config.get("sources", {}).get("mymind")
+    if source:
+        try:
+            _sync_source("mymind", source)
+        except RuntimeError as error:
+            print(f"quick-intake: {error}", file=sys.stderr)
+            raise SystemExit(1) from None
+    else:
+        print("quick-intake: mymind is not a configured source, so only tags already synced route", file=sys.stderr)
+    print(json.dumps(tag_routes.route_tagged(dry_run=args.dry_run), ensure_ascii=False))
+
+
 def cmd_search(args):
     """Search by words or explicitly approved semantic judgments."""
     query = " ".join(args.query)
@@ -1192,6 +1214,10 @@ def main():
     # route
     route_parser = subparsers.add_parser("route", help="Push items to backlogs")
     route_parser.add_argument("--dry-run", action="store_true", help="Preview without writing")
+    route_tags_parser = subparsers.add_parser("route-tags", help="Route saves whose owner tags name a project (no model call)")
+    route_tags_parser.add_argument("--dry-run", action="store_true", help="Show what would route without writing")
+    intake_fast = subparsers.add_parser("quick-intake", help="Sync mymind, then route tagged saves; for a 15-minute launchd job")
+    intake_fast.add_argument("--dry-run", action="store_true", help="Sync, but only show what would route")
     subparsers.add_parser("queue", help="Print queued items awaiting triage as JSON")
     brief_parser = subparsers.add_parser("brief", help="Plan Do items: one read-only agent run per project")
     brief_parser.add_argument("--project", help="Only this project slug")
@@ -1699,6 +1725,8 @@ def _dispatch(args):
         "classify": cmd_classify,
         "route": cmd_route,
         "route-top": cmd_route_top,
+        "route-tags": cmd_route_tags,
+        "quick-intake": cmd_quick_intake,
         "queue": cmd_queue,
         "brief": cmd_brief,
         "read": cmd_read,

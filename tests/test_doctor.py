@@ -41,5 +41,16 @@ class SourceFreshnessTest(unittest.TestCase):
                          ("fail", "granola-digests sync"))
 
 
+
+class SourceWarningsTest(unittest.TestCase):
+    def test_a_field_mymind_started_sending_is_a_warning(self):
+        found = list(doctor.source_warnings({"mymind": '{"unknown_fields": ["highlights", "colors"]}', "x": "123"}))
+        self.assertEqual([line[:2] for line in found], [("warn", "mymind fields")])
+        self.assertIn("highlights, colors", found[0][2])
+
+    def test_no_new_fields_is_no_line(self):
+        self.assertEqual(list(doctor.source_warnings({"mymind": "{}", "readwise-notes": None})), [])
+
+
 if __name__ == "__main__":
     unittest.main()

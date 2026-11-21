@@ -445,6 +445,7 @@ private struct PasteKeyButton: View {
                     return
                 }
                 UserDefaults.standard.set(key, forKey: BeaconHTTP.accessKeyKey)
+                BeaconApp.shareSheetSetup()
                 note = nil
                 Task { await reload() }
             } label: {

@@ -41,7 +41,8 @@ _SHELF = {"type": "string", "description": "File the save on this area slug (see
 TOOLS = [
     {"name": "search_library",
      "description": f"Search {OWNER}'s saved posts, pictures and links, best match first. mode 'words' matches the post, "
-                    f"what Beacon wrote about it (takeaway, tags) and {OWNER}'s own notes and tags on it (owner_notes), "
+                    f"what Beacon wrote about it (takeaway, tags), {OWNER}'s own notes and tags on it (owner_notes) and, on a "
+                    "mymind save, mymind's AI summary and tags (summary, mymind_tags: a model wrote them, not the owner), "
                     "in any word form; 'both' also ranks by meaning. "
                     "Mode 'meaning' finds pictures "
                     "that show what you describe (on-device SigLIP), even when the post never says it. Inside one "
@@ -56,7 +57,8 @@ TOOLS = [
                                             "finds nothing.",
      "inputSchema": {"type": "object", "required": ["id"], "properties": {"id": {"type": "integer"}, "limit": _LIMIT, "offset": _OFFSET}}},
     {"name": "get_save", "description": "One save in full: text, link, author, shelf, the owner's own notes and tags (tag_targets: the projects and "
-                                        "areas each tag points at, and how: literal name, owner, or model), and picture links. Request images "
+                                        "areas each tag points at, and how: literal name, owner, or model), mymind's AI summary and tags on a mymind "
+                                        "save (summary, mymind_tags; a model wrote them), and picture links. Request images "
                                         "to see up to four pictures, including the still image for a video.",
      "inputSchema": {"type": "object", "required": ["id"], "properties": {
          "id": {"type": "integer"}, "project": {"type": "string", "description": "Use the project slug returned by "
@@ -119,7 +121,9 @@ def _save(entry, full=False, every_note=False):
     return {"id": entry["id"], "source": entry["source"], "title": title, "text": text, "url": entry["url"],
             "author": entry["author_name"] or entry["author"], "shelf": entry["area"], "date": entry["date"],
             "pictures": [_picture(m["url"]) for m in entry["media"]], "owner_notes": notes,
-            **({"owner_notes_more": more} if more else {})}
+            **({"owner_notes_more": more} if more else {}),
+            **({"summary": entry["summary"]} if entry.get("summary") else {}),
+            **({"mymind_tags": entry["mymind_tags"]} if entry.get("mymind_tags") else {})}
 
 
 def _small(url):

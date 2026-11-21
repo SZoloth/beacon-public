@@ -267,7 +267,10 @@ SELECT i.id,
        COALESCE((SELECT takeaway || ' ' || kind FROM item_gists WHERE item_id = i.id), '') || ' ' ||
        COALESCE((SELECT takeaway FROM pile_decisions WHERE item_id = i.id), '') || ' ' || COALESCE(i.one_liner, '') || ' ' ||
        COALESCE((SELECT group_concat(t.name, ' ') FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = i.id), '') || ' ' ||
-       COALESCE((SELECT group_concat(n.body || ' ' || COALESCE(n.context, ''), ' ') FROM owner_notes n WHERE n.item_id = i.id), '')
+       COALESCE((SELECT group_concat(n.body || ' ' || COALESCE(n.context, ''), ' ') FROM owner_notes n WHERE n.item_id = i.id), '') || ' ' ||
+       COALESCE(CASE WHEN i.source = 'mymind' AND json_valid(i.raw_json) THEN COALESCE(json_extract(i.raw_json, '$.object.summary'), '') || ' ' ||
+         COALESCE((SELECT group_concat(json_extract(t.value, '$.name'), ' ') FROM json_each(i.raw_json, '$.object.tags') t
+                   WHERE json_extract(t.value, '$.flags') & 2 AND NOT json_extract(t.value, '$.flags') & 8), '') END, '')
 FROM items i"""
 _REFRESH = "DELETE FROM library_fts WHERE rowid = {id}; INSERT INTO library_fts(rowid, words, about) " + _LIBRARY_ROW + " WHERE i.id = {id};"
 _LIBRARY_TRIGGERS = [  # (name, event, the id it refreshes, whether the save itself is gone)
@@ -298,9 +301,10 @@ def _library_search(conn):
         conn.execute("BEGIN IMMEDIATE")
         new = not conn.execute("SELECT 1 FROM sqlite_master WHERE name='library_fts'").fetchone()
         conn.execute(LIBRARY_FTS_SCHEMA)
-        # Triggers made before owner notes would rewrite a row without them, so they are made again and the index refilled.
+        # Triggers made before owner notes or mymind summaries would rewrite a row without them, so they are made
+        # again and the index refilled.
         old = conn.execute("SELECT sql FROM sqlite_master WHERE type='trigger' AND name='library_fts_items_insert'").fetchone()
-        if old and "owner_notes" not in old[0]:
+        if old and not all(part in old[0] for part in ("owner_notes", "$.object.summary", "$.object.tags")):
             for (name,) in conn.execute("SELECT name FROM sqlite_master WHERE type='trigger' AND name LIKE 'library_fts_%'").fetchall():
                 conn.execute(f"DROP TRIGGER {name}")
             conn.execute("DELETE FROM library_fts")
@@ -658,6 +662,11 @@ def fts_query(query):
     return " ".join('"' + term.replace('"', '""') + '"' for term in query.split())
 
 
+# A mymind card the last sync listed (owner_notes._mark_listed): agents find it without notes.
+MYMIND_LISTED = ("(i.source = 'mymind' AND CASE WHEN json_valid(i.raw_json) THEN json_extract(i.raw_json, '$.listed') "
+                 "ELSE 0 END = 1)")
+
+
 def get_library(offset=0, limit=200, area=None, query=None, ranked=None, noted=False, hide=()):
     """Mosaic's feed: every save with a picture, plus GitHub stars, newest first.
 
@@ -671,8 +680,8 @@ def get_library(offset=0, limit=200, area=None, query=None, ranked=None, noted=F
     `hide` leaves out these save ids.
     """
     shelf = "a.area != 'none' AND a.probability >= 0.6"
-    where = ("(i.in_library = 1 OR (i.status != 'rejected' AND EXISTS(SELECT 1 FROM owner_notes n WHERE n.item_id = i.id)))"
-             if noted else "i.in_library = 1")
+    where = ("(i.in_library = 1 OR (i.status != 'rejected' AND (EXISTS(SELECT 1 FROM owner_notes n WHERE n.item_id = i.id) "
+             f"OR {MYMIND_LISTED})))" if noted else "i.in_library = 1")
     params = tuple(hide)
     if hide:
         where += f" AND i.id NOT IN ({','.join('?' * len(params))})"
@@ -749,7 +758,24 @@ def library_entry(row, owner_notes=None):
                    "width": m.get("width"), "height": m.get("height")}
                   for m in preview.get("media") or [] if m.get("url")],
         "owner_notes": owner_notes or [],
+        **mymind_ai(row["source"], row["raw_json"]),
     }
+
+
+def mymind_ai(source, raw_json):
+    """What mymind's AI wrote about a card, not the owner: {"summary": its TL;DR or None, "mymind_tags": [its tags]}."""
+    found = {"summary": None, "mymind_tags": []}
+    if source != "mymind" or not raw_json:
+        return found
+    try:
+        card = json.loads(raw_json).get("object") or {}
+    except (ValueError, AttributeError):
+        return found
+    summary = card.get("summary")
+    found["summary"] = summary.strip() if isinstance(summary, str) and summary.strip() else None
+    found["mymind_tags"] = [tag["name"] for tag in card.get("tags") or [] if isinstance(tag, dict) and tag.get("name")
+                            and (tag.get("flags") or 0) & 2 and not (tag.get("flags") or 0) & 8]
+    return found
 
 
 def get_triage_queue():

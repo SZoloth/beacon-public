@@ -58,6 +58,7 @@ targets:
       # Settings › Beacon: where the phone's access key is pasted.
       - path: ../ios/Settings.bundle
         buildPhase: resources
+      - ShareShared
       - path: ../Sources/BeaconTriage
         excludes:
           - BeaconTriageApp.swift
@@ -90,6 +91,7 @@ targets:
         com.apple.security.application-groups: [group.com.example.beacon]
     dependencies:
       - target: BeaconWidgetsPhone
+      - target: BeaconSharePhone
 
   BeaconWidgetsMac:
     type: app-extension
@@ -147,4 +149,41 @@ targets:
         CODE_SIGN_STYLE: Automatic
         SKIP_INSTALL: YES
         TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+
+  # Send to Beacon in the share sheet (from X's "Share via…", Safari, anywhere): pick projects, say why, save.
+  BeaconSharePhone:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Share
+      - ShareShared
+    info:
+      path: build/Info-share-ios.plist
+      properties:
+        CFBundleDisplayName: Beacon
+        BeaconDefaultServer: $(BEACON_DEFAULT_SERVER)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationSupportsText: true
+        NSAppTransportSecurity:
+          NSExceptionDomains:
+            ts.net:
+              NSIncludesSubdomains: true
+              NSExceptionAllowsInsecureHTTPLoads: true
+    entitlements:
+      path: build/BeaconSharePhone.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.example.beacon]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.beacon-one.share
+        CODE_SIGN_STYLE: Automatic
+        SKIP_INSTALL: YES
+        TARGETED_DEVICE_FAMILY: "1"
+        BEACON_DEFAULT_SERVER: ""
         ASSETCATALOG_COMPILER_APPICON_NAME: ""

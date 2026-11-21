@@ -22,6 +22,7 @@ JOBS = {  # label: True when the job should be running all the time
     "com.example.beacon-weekly": False,
     "com.example.beacon-calls-rank": False,
     "com.example.beacon-python-bump": False,
+    "com.example.beacon-mymind": False,
 }
 KEYS = ("BEACON_X_AUTH_TOKEN", "BEACON_X_CT0")
 STALE_DAYS = 8  # the Monday job syncs every source once a week
@@ -112,8 +113,20 @@ def check_sources():
                                                             ("readwise-api", "readwise_cli"), ("granola-digests", "granola_digests"))
                                  if paths.get(key)]
     with sqlite3.connect(f"file:{database}?mode=ro", uri=True) as conn:
-        last_syncs = dict(conn.execute("SELECT source, last_sync FROM sync_state"))
-    yield from source_freshness(last_syncs, sources, datetime.now(timezone.utc).isoformat())
+        rows = conn.execute("SELECT source, last_sync, last_id FROM sync_state").fetchall()
+    yield from source_freshness({source: last for source, last, _ in rows}, sources, datetime.now(timezone.utc).isoformat())
+    yield from source_warnings({source: state for source, _, state in rows})
+
+
+def source_warnings(states):
+    """A warn line when the last mymind sync saw top-level fields Beacon doesn't know (owner_notes.MYMIND_FIELDS)."""
+    try:
+        unknown = json.loads(states.get("mymind") or "{}").get("unknown_fields") or []
+    except (ValueError, AttributeError):
+        unknown = []
+    if unknown:
+        yield ("warn", "mymind fields", f"mymind sends fields Beacon doesn't read: {', '.join(unknown)}; "
+                                        "map or ignore each in lib/owner_notes.py MYMIND_FIELDS")
 
 
 def check_python():

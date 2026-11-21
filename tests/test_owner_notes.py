@@ -55,7 +55,7 @@ class OwnerNotesTest(unittest.TestCase):
         card = self.item("mymind", "a")
         self.assertEqual(self.notes(), [(card, "tag", "owner", "pencil review")],
                          "AI tags, tags without flags and a second spelling of the same tag are left out")
-        self.assertIsNone(self.item("mymind", "b"), "a card with no owner note or tag is not imported")
+        self.assertIsNotNone(self.item("mymind", "b"), "a card with no owner note or tag is still a save")
 
     def test_a_note_on_an_x_post_beacon_has_attaches_to_that_post(self):
         with closing(db.get_connection()) as conn, conn:
@@ -101,6 +101,20 @@ class OwnerNotesTest(unittest.TestCase):
         self.sync(mymind_object("a", tags=[("kiln", 8)]), mymind_object("b", notes=["other"]))
         self.sync(mymind_object("b", notes=["other"]))
         self.assertIn((self.item("mymind", "a"), "note", "owner", "from the export"), self.notes())
+
+    def test_a_sync_names_any_field_mymind_starts_sending(self):
+        card = mymind_object("a")
+        self.assertNotIn("unknown_fields", self.sync(card))
+        card["highlights"] = [{"text": "a passage"}]
+        self.assertEqual(self.sync(card)["unknown_fields"], ["highlights"])
+        self.assertEqual(self.sync_state("mymind"), {"unknown_fields": ["highlights"]}, "kept for the doctor")
+        del card["highlights"]
+        self.sync(card)
+        self.assertEqual(self.sync_state("mymind"), {})
+
+    def sync_state(self, source):
+        with closing(db.get_connection()) as conn:
+            return json.loads(conn.execute("SELECT last_id FROM sync_state WHERE source=?", (source,)).fetchone()[0])
 
     def test_a_line_separator_inside_a_note_stays_in_the_note(self):
         self.sync(mymind_object("a", notes=["first line\u2028second line"]))
@@ -168,6 +182,42 @@ class OwnerNotesTest(unittest.TestCase):
             conn.execute("UPDATE items SET title = 'renamed'")
         self.assertEqual(found(), [item], "an edit to the save keeps its notes in the index")
 
+    def test_word_search_index_carries_mymind_ai_tags_on_a_database_made_with_summaries(self):
+        old_path = str(Path(self.temp.name) / "old.db")
+        db.init_db(old_path)
+        with closing(sqlite3.connect(old_path)) as conn, conn:
+            for (name,) in conn.execute("SELECT name FROM sqlite_master WHERE type='trigger' AND name LIKE 'library_fts_%'").fetchall():
+                conn.execute(f"DROP TRIGGER {name}")
+            conn.execute("CREATE TRIGGER library_fts_items_insert AFTER INSERT ON items BEGIN "
+                         "INSERT INTO library_fts(rowid, words, about) VALUES (NEW.id, COALESCE(NEW.title, ''), ''); END "
+                         "/* owner_notes $.object.summary */")
+            raw = json.dumps({"import_format": "mymind-cli-v1", "object": {"id": "a", "tags": [{"name": "dovetail", "flags": 2}]}})
+            item = conn.execute("INSERT INTO items(source, external_id, title, raw_json, synced_at) "
+                                "VALUES('mymind', 'a', 'A card', ?, 'now')", (raw,)).lastrowid
+        db.init_db(old_path)
+        with closing(sqlite3.connect(old_path)) as conn:
+            self.assertEqual([row[0] for row in conn.execute("SELECT rowid FROM library_fts WHERE library_fts MATCH 'dovetail'")], [item])
+
+    def test_word_search_index_carries_mymind_summaries_on_a_database_made_before_them(self):
+        old_path = str(Path(self.temp.name) / "old.db")
+        db.init_db(old_path)
+        with closing(sqlite3.connect(old_path)) as conn, conn:
+            for (name,) in conn.execute("SELECT name FROM sqlite_master WHERE type='trigger' AND name LIKE 'library_fts_%'").fetchall():
+                conn.execute(f"DROP TRIGGER {name}")
+            conn.execute("CREATE TRIGGER library_fts_items_insert AFTER INSERT ON items BEGIN "
+                         "INSERT INTO library_fts(rowid, words, about) VALUES (NEW.id, COALESCE(NEW.title, ''), ''); END "
+                         "/* owner_notes */")
+            raw = json.dumps({"import_format": "mymind-cli-v1", "object": {"id": "a", "summary": "drawer joinery"}})
+            item = conn.execute("INSERT INTO items(source, external_id, title, raw_json, synced_at) "
+                                "VALUES('mymind', 'a', 'A card', ?, 'now')", (raw,)).lastrowid
+
+        def found():
+            with closing(sqlite3.connect(old_path)) as conn:
+                return [row[0] for row in conn.execute("SELECT rowid FROM library_fts WHERE library_fts MATCH 'joinery'")]
+        self.assertEqual(found(), [], "the old index never saw the summary")
+        db.init_db(old_path)
+        self.assertEqual(found(), [item])
+
 
 if __name__ == "__main__":
     unittest.main()
@@ -208,6 +258,10 @@ class NotedSavesTest(unittest.TestCase):
         owner_notes.sync_mymind("/cli", run=lambda command, timeout: lines)
         with closing(db.get_connection()) as conn:
             return {row["external_id"]: row["id"] for row in conn.execute("SELECT id, external_id FROM items")}
+
+    def notes_on(self, item_id):
+        with closing(db.get_connection()) as conn:
+            return [(row["kind"], row["body"]) for row in conn.execute("SELECT kind, body FROM owner_notes WHERE item_id=?", (item_id,))]
 
     def found(self, project, task=None, **paging):
         return [(save["id"], save["filed"], save["reason"]) for save in
@@ -335,6 +389,87 @@ class NotedSavesTest(unittest.TestCase):
         self.assertEqual([save["id"] for save in call("search_library", query="sideboards")["saves"]], [ids["a"]])
         found = call("project_references", project="beacon")["references"]
         self.assertEqual([(save["id"], save["filed"], save["owner_notes"]) for save in found], [(ids["a"], "noted", notes)])
+
+    def test_agents_read_and_search_myminds_summary_apart_from_the_saves_own_text(self):
+        from lib import mcp
+        post = self.card("a", tags=["beacon"])
+        post["mainEntity"]["content"] = {"type": "text/markdown", "body": "the post itself"}
+        post["summary"] = "A walkthrough of drawer joinery"
+        bare = self.card("b", tags=["beacon"])
+        del bare["summary"]
+        ids = self.sync(post, bare)
+
+        def call(name, **arguments):
+            return mcp.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": arguments}})["result"]["structuredContent"]
+        save = call("get_save", id=ids["a"])
+        self.assertEqual((save["text"], save["summary"]), ("the post itself", "A walkthrough of drawer joinery"))
+        self.assertNotIn("summary", call("get_save", id=ids["b"]), "a card mymind never summarized has no summary")
+        self.assertEqual([found["id"] for found in call("search_library", query="joinery")["saves"]], [ids["a"]])
+
+    def mcp_call(self, name, **arguments):
+        from lib import mcp
+        return mcp.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                           "params": {"name": name, "arguments": arguments}})["result"]["structuredContent"]
+
+    def test_agents_find_every_mymind_card_by_its_summary_and_ai_tags_but_the_feed_and_projects_do_not(self):
+        bare = mymind_object("a", tags=[("dovetail", 2), ("hashtag", None), ("mine", 8)], title="card a")
+        bare["summary"] = "A walkthrough of drawer joinery for beacon"
+        ids = self.sync(bare)
+        self.assertEqual(self.notes_on(ids["a"]), [("tag", "mine")])
+        self.assertEqual([s["id"] for s in self.mcp_call("search_library", query="joinery")["saves"]], [ids["a"]])
+        self.assertEqual([s["id"] for s in self.mcp_call("search_library", query="dovetail")["saves"]], [ids["a"]])
+        self.assertEqual(self.mcp_call("search_library", query="hashtag")["saves"], [], "tags mymind copied from the page stay out")
+        save = self.mcp_call("get_save", id=ids["a"])
+        self.assertEqual(save["mymind_tags"], ["dovetail"], "only mymind's AI tags, apart from the owner's")
+        unsummarized = mymind_object("c", tags=[("mortise", 4098)], title="card c")
+        del unsummarized["summary"]
+        ids = self.sync(bare, unsummarized)
+        self.assertEqual([s["id"] for s in self.mcp_call("search_library", query="mortise")["saves"]], [ids["c"]],
+                         "a card mymind never summarized is still found by its AI tags")
+        plain = self.sync(mymind_object("b", title="card b"))
+        self.assertNotIn("mymind_tags", self.mcp_call("get_save", id=plain["b"]))
+        self.assertEqual(db.get_library()["total"], 0, "the picture feed is unchanged")
+        self.assertEqual(self.found("beacon"), [], "a summary naming a project is not the owner filing it there")
+
+    def test_a_card_without_notes_never_shows_up_in_project_references(self):
+        bare = mymind_object("a", title="card a")
+        bare["summary"] = "Everything about beacon"
+        self.sync(bare)
+        self.assertEqual(self.found("beacon"), [])
+        self.assertEqual(self.found("beacon", "everything about beacon"), [])
+
+    def test_a_card_copying_an_x_post_beacon_has_is_not_a_second_save_for_agents(self):
+        card = mymind_object("a", notes=["walnut sideboard"], url="https://x.com/someone/status/55", title="card a")
+        card["summary"] = "A walnut sideboard"
+        own = self.sync(card)["a"]
+        with closing(db.get_connection()) as conn, conn:
+            conn.execute("INSERT INTO items(source, external_id, url, synced_at) VALUES('x', '55', 'https://x.com/someone/status/55', 'now')")
+        card["notes"] = []
+        copy = mymind_object("b", url="https://x.com/someone/status/55", title="card b")
+        ids = self.sync(card, copy)
+        self.assertNotIn("b", ids, "an unannotated copy of a post Beacon has makes no save")
+        self.assertEqual([s["id"] for s in self.mcp_call("search_library", query="sideboard")["saves"]], [],
+                         "the old own save of a post Beacon now has stays out")
+        self.assertIn(own, ids.values(), "items are never deleted")
+
+    def test_a_cards_listing_survives_its_next_sync_until_the_listing_pass_runs(self):
+        ids = self.sync(mymind_object("a", title="joinery card"))
+        owner_notes.store("mymind", owner_notes.mymind_records([mymind_object("a", title="joinery card")]), complete=True)
+        self.assertEqual([s["id"] for s in self.mcp_call("search_library", query="joinery")["saves"]], [ids["a"]],
+                         "agents still find the card between the write and the listing pass")
+
+    def test_a_card_deleted_in_mymind_leaves_what_agents_find(self):
+        ids = self.sync(mymind_object("a", title="joinery card"), mymind_object("b", title="other card"))
+        self.assertEqual([s["id"] for s in self.mcp_call("search_library", query="joinery")["saves"]], [ids["a"]])
+        self.sync(mymind_object("b", title="other card"))
+        self.assertEqual(self.mcp_call("search_library", query="joinery")["saves"], [])
+
+    def test_bad_json_on_a_save_never_breaks_the_word_index(self):
+        with closing(db.get_connection()) as conn, conn:
+            for source in ("mymind", "x"):
+                conn.execute("INSERT INTO items(source, external_id, title, raw_json, synced_at) VALUES(?, 'z', 'broken', 'not json', 'now')",
+                             (source,))
+        self.assertEqual(len(self.mcp_call("search_library", query="broken")["saves"]), 0)
 
     def test_agents_never_read_or_find_a_noted_save_the_owner_rejected(self):
         from lib import mcp

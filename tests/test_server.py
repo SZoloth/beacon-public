@@ -219,6 +219,34 @@ class KeepTest(unittest.TestCase):
                 threading.Event().wait(0.05)
         self.assertIn("save 9 not indexed yet (beacon-embed isn't built)", log.getvalue())
 
+    def test_a_share_sheet_save_is_routed_with_its_why_and_copied_to_mymind(self):
+        mirrored = threading.Event()
+        run_cli = lambda args: "{}" if args[0] == "vectors" else '{"id": 7}'
+        with patch.object(server.send_to, "route_save", return_value={"routed": ["site"], "kept_out": []}) as routed, \
+                patch.object(server.send_to, "mirror_to_mymind", side_effect=lambda *a: mirrored.set()) as mirror:
+            conn = self.serve(run_cli)
+            conn.request("POST", "/add", body=json.dumps({"url": "https://example.com", "projects": ["site"], "note": "why"}),
+                         headers={"Content-Type": "application/json"})
+            response = conn.getresponse()
+            self.assertEqual((response.status, json.loads(response.read())),
+                             (200, {"id": 7, "routed": ["site"], "kept_out": []}))
+            self.assertTrue(mirrored.wait(5))
+        routed.assert_called_once_with(7, ["site"], "why")
+        mirror.assert_called_once_with("https://example.com", ["site"], "why")
+
+    def test_a_plain_keep_routes_nothing_and_bad_projects_are_refused(self):
+        with patch.object(server.send_to, "route_save") as routed:
+            self.assertEqual(server._send_to({"id": 7}, "https://example.com", {}), {"id": 7})
+            for bad in ({"projects": "site"}, {"projects": ["Not A Slug"]}, {"projects": ["a"] * 6}, {"note": 3}):
+                with self.assertRaises(ValueError):
+                    server._send_to({"id": 7}, "https://example.com", bad)
+        routed.assert_not_called()
+
+    def test_the_share_sheet_asks_for_projects_ranked_for_its_text(self):
+        with patch.object(server.send_to, "ranked", return_value=[{"slug": "site"}]) as ranked:
+            self.assertEqual(server.route("GET", "/projects?text=grid%20layout", {}), (200, [{"slug": "site"}]))
+        ranked.assert_called_once_with("grid layout")
+
     def test_indexing_gets_its_own_longer_deadline(self):
         with patch.object(server.subprocess, "run") as run:
             run.return_value.returncode = 0

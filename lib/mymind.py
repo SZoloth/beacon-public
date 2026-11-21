@@ -156,22 +156,26 @@ def import_export(path, db_path=None, preview=False):
         with conn:
             for item in items:
                 existing = conn.execute(
-                    "SELECT id FROM items WHERE source='mymind' AND external_id=?", (item["external_id"],)
+                    "SELECT id, CASE WHEN json_valid(raw_json) THEN json_extract(raw_json, '$.import_format') END AS format "
+                    "FROM items WHERE source='mymind' AND external_id=?", (item["external_id"],)
                 ).fetchone()
                 added += existing is None
-                conn.execute(
-                    """INSERT INTO items
-                       (source, external_id, title, body, url, author, raw_json, created_at, saved_at, synced_at)
-                       VALUES ('mymind', ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                       ON CONFLICT(source, external_id) DO UPDATE SET
-                         title=excluded.title, body=excluded.body, url=excluded.url,
-                         author=COALESCE(excluded.author, items.author),
-                         raw_json=excluded.raw_json,
-                         created_at=COALESCE(excluded.created_at, items.created_at),
-                         saved_at=COALESCE(excluded.saved_at, items.saved_at), synced_at=excluded.synced_at""",
-                    tuple(item[field] for field in
-                          ("external_id", "title", "body", "url", "author", "raw_json", "created_at", "saved_at")) + (now,),
-                )
+                # The mymind sync's copy is live and whole; an export only adds its note and tags to it.
+                live = existing is not None and existing["format"] == "mymind-cli-v1"
+                if not live:
+                    conn.execute(
+                        """INSERT INTO items
+                           (source, external_id, title, body, url, author, raw_json, created_at, saved_at, synced_at)
+                           VALUES ('mymind', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                           ON CONFLICT(source, external_id) DO UPDATE SET
+                             title=excluded.title, body=excluded.body, url=excluded.url,
+                             author=COALESCE(excluded.author, items.author),
+                             raw_json=excluded.raw_json,
+                             created_at=COALESCE(excluded.created_at, items.created_at),
+                             saved_at=COALESCE(excluded.saved_at, items.saved_at), synced_at=excluded.synced_at""",
+                        tuple(item[field] for field in
+                              ("external_id", "title", "body", "url", "author", "raw_json", "created_at", "saved_at")) + (now,),
+                    )
                 item_id = conn.execute(
                     "SELECT id FROM items WHERE source='mymind' AND external_id=?", (item["external_id"],)
                 ).fetchone()["id"]

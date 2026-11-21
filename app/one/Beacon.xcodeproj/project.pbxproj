@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		04AC2A10020387821F3F4BCC /* Activity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E442AF806F53696D8182AF4 /* Activity.swift */; };
 		06F4AC244F51042AFEFB2D84 /* Bench.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE180A0C172F5903A0930289 /* Bench.swift */; };
+		0F16DC2ED5652E59850C64E3 /* BeaconSharePhone.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C16E84555F1C6D9204C0DDB2 /* BeaconSharePhone.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		0F895925D59C91FE344C27F4 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D278F2591146F00D66AA47F /* Model.swift */; };
 		159E08E9A796EB17B5894C62 /* Pick.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0573FDD90B94D98657513B /* Pick.swift */; };
 		18592DEB43C80F20C9CD1562 /* Settings.bundle in Resources */ = {isa = PBXBuildFile; fileRef = E71481F3543755C0D447F60B /* Settings.bundle */; };
@@ -23,6 +24,8 @@
 		35BAF82A72F9CFC618FA8090 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB35441006C1595573CADBCE /* LibraryView.swift */; };
 		38E1C0CD5F33271A61C5920F /* PostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19B1860C4C781EE7B0ECA842 /* PostView.swift */; };
 		3A9AD8F32E9205F6E2689D08 /* Thumbnails.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDFEEECA9436D7B51E450662 /* Thumbnails.swift */; };
+		3E37AAABDCACCC3B3A3FA884 /* BeaconShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F3766403B0F491DA4276CC1 /* BeaconShare.swift */; };
+		41F1DEE9FFC6637CC9E8E6B5 /* ShareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 795D5C4048EB3AE2EC04C8FC /* ShareView.swift */; };
 		44378B0DA303CBB54A2D45D4 /* BeaconHTTP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24B30E0A3878E488E27432C4 /* BeaconHTTP.swift */; };
 		4680AEFF1B9ED72CE902CCC3 /* TriageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B7DACB33A43F0DEA7A4AAD /* TriageStore.swift */; };
 		4A4CFFE2A01625C208FEAE6F /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A25474D6A863D05F81CABC5F /* Theme.swift */; };
@@ -50,6 +53,7 @@
 		9343B98C18582E42E7FD0B40 /* PostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19B1860C4C781EE7B0ECA842 /* PostView.swift */; };
 		9844BFBA961A97B74E881111 /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEB74AE31AE9FB49160B3803 /* WidgetViews.swift */; };
 		9EE992FF0744F19B27BD4D08 /* BeaconApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D43EAD380E8313ABA3F2089 /* BeaconApp.swift */; };
+		A103ACA0BAA453ED9505F489 /* BeaconShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F3766403B0F491DA4276CC1 /* BeaconShare.swift */; };
 		A2B6FFC97EE368350A51D28D /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95204C0D7A57AAC11617086B /* Platform.swift */; };
 		A5DD9ED9BAB060FCAFA66E98 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D278F2591146F00D66AA47F /* Model.swift */; };
 		A798F57CCCA4ADC8604DD49E /* PickPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 356FBCBB42B3E1F15A5E5780 /* PickPage.swift */; };
@@ -61,6 +65,7 @@
 		BE5ADE85EA7ACA697AA8DE61 /* PairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B000E2F8E5AFAA3049AA045B /* PairView.swift */; };
 		CAD4C7D72BDBCA62759A2776 /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEB74AE31AE9FB49160B3803 /* WidgetViews.swift */; };
 		D2B09F5A745F8D28CF3B46E7 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A25474D6A863D05F81CABC5F /* Theme.swift */; };
+		D85AD9E41FE77EAD67A9014A /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1949062AEA177DB06B997F44 /* ShareViewController.swift */; };
 		DC8EEBD143DC36D8F1BAB984 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BB1580873CAFB37CC148504 /* ContentView.swift */; };
 		DFEB3CE1C77674A5C0EE029A /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC263BA6EE9C5B7B33FB99F6 /* WidgetSnapshot.swift */; };
 		E4DA36895F0CD4E023D0ECB5 /* Pick.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0573FDD90B94D98657513B /* Pick.swift */; };
@@ -85,6 +90,13 @@
 			remoteGlobalIDString = BE235BDDB7567851C7635789;
 			remoteInfo = BeaconWidgetsMac;
 		};
+		F3822098D0544C0B4F7CC721 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C6CDC17607DFF5D714886E77 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9FA1A10A3C7EEC6F7DFDBB1B;
+			remoteInfo = BeaconSharePhone;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -106,6 +118,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				BBB10B376CB6439AAD72307D /* BeaconWidgetsPhone.appex in Embed Foundation Extensions */,
+				0F16DC2ED5652E59850C64E3 /* BeaconSharePhone.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -115,9 +128,11 @@
 /* Begin PBXFileReference section */
 		0599B08B17AC151B5C364DFA /* BriefsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BriefsView.swift; sourceTree = "<group>"; };
 		0BB1580873CAFB37CC148504 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		1949062AEA177DB06B997F44 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		19B1860C4C781EE7B0ECA842 /* PostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostView.swift; sourceTree = "<group>"; };
 		1E442AF806F53696D8182AF4 /* Activity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Activity.swift; sourceTree = "<group>"; };
 		24B30E0A3878E488E27432C4 /* BeaconHTTP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeaconHTTP.swift; sourceTree = "<group>"; };
+		2F3766403B0F491DA4276CC1 /* BeaconShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeaconShare.swift; sourceTree = "<group>"; };
 		356FBCBB42B3E1F15A5E5780 /* PickPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickPage.swift; sourceTree = "<group>"; };
 		470D278F40268370DF267604 /* ActivityPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityPage.swift; sourceTree = "<group>"; };
 		5AEC090A2B0ED8BFD16E83E4 /* BeaconWidgetsMac.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BeaconWidgetsMac.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -125,6 +140,7 @@
 		5E8769DD9A9C10F761A47EFD /* BeaconWidgetsPhone.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = BeaconWidgetsPhone.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		61C91617F12826B34041FB00 /* TrayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrayView.swift; sourceTree = "<group>"; };
 		6AD37795D5DB1F40E3753FE8 /* ReferenceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferenceSheet.swift; sourceTree = "<group>"; };
+		795D5C4048EB3AE2EC04C8FC /* ShareView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareView.swift; sourceTree = "<group>"; };
 		7E0573FDD90B94D98657513B /* Pick.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pick.swift; sourceTree = "<group>"; };
 		829E929E9E5B47AF1D691072 /* BeaconWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeaconWidgets.swift; sourceTree = "<group>"; };
 		8723F0AA84AFAAA409F5ECA5 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
@@ -140,6 +156,7 @@
 		B000E2F8E5AFAA3049AA045B /* PairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairView.swift; sourceTree = "<group>"; };
 		BC263BA6EE9C5B7B33FB99F6 /* WidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshot.swift; sourceTree = "<group>"; };
 		BEB74AE31AE9FB49160B3803 /* WidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetViews.swift; sourceTree = "<group>"; };
+		C16E84555F1C6D9204C0DDB2 /* BeaconSharePhone.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = BeaconSharePhone.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CB35441006C1595573CADBCE /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		CDFEEECA9436D7B51E450662 /* Thumbnails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Thumbnails.swift; sourceTree = "<group>"; };
 		D090F6DE20DF17D7D30EFF3C /* BeaconCLI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeaconCLI.swift; sourceTree = "<group>"; };
@@ -160,6 +177,7 @@
 			children = (
 				880527582A8993BB88F33C39 /* BeaconMac.app */,
 				87FA1EC07600DCCB0180D44F /* BeaconPhone2.app */,
+				C16E84555F1C6D9204C0DDB2 /* BeaconSharePhone.appex */,
 				5AEC090A2B0ED8BFD16E83E4 /* BeaconWidgetsMac.appex */,
 				5E8769DD9A9C10F761A47EFD /* BeaconWidgetsPhone.appex */,
 			);
@@ -173,6 +191,14 @@
 			);
 			name = Sources;
 			path = ../ios/Sources;
+			sourceTree = "<group>";
+		};
+		5DAC4B9A5628D9F7DADA599E /* ShareShared */ = {
+			isa = PBXGroup;
+			children = (
+				2F3766403B0F491DA4276CC1 /* BeaconShare.swift */,
+			);
+			path = ShareShared;
 			sourceTree = "<group>";
 		};
 		64E8DAE41942259FA7506A72 /* ios */ = {
@@ -189,7 +215,9 @@
 			children = (
 				FF470927D0CBB3CE07B419FF /* BeaconTriage */,
 				64E8DAE41942259FA7506A72 /* ios */,
+				BC39698A06CA2F91A0F7C2DF /* Share */,
 				1168A4BC81DD0ED8F231522A /* Shared */,
+				5DAC4B9A5628D9F7DADA599E /* ShareShared */,
 				9E683AE71CB931CFE0981F45 /* Sources */,
 				5A6FD8CFDDA4ED0CF21C250A /* Sources */,
 				DED28D1F125EC259A4E42AD8 /* Widgets */,
@@ -215,6 +243,15 @@
 				5E58ACBC4015154C31DAC313 /* WidgetPublisher.swift */,
 			);
 			path = Sources;
+			sourceTree = "<group>";
+		};
+		BC39698A06CA2F91A0F7C2DF /* Share */ = {
+			isa = PBXGroup;
+			children = (
+				795D5C4048EB3AE2EC04C8FC /* ShareView.swift */,
+				1949062AEA177DB06B997F44 /* ShareViewController.swift */,
+			);
+			path = Share;
 			sourceTree = "<group>";
 		};
 		DED28D1F125EC259A4E42AD8 /* Widgets */ = {
@@ -266,6 +303,23 @@
 			productReference = 880527582A8993BB88F33C39 /* BeaconMac.app */;
 			productType = "com.apple.product-type.application";
 		};
+		9FA1A10A3C7EEC6F7DFDBB1B /* BeaconSharePhone */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 50DDE949992B2FA26E24B8F7 /* Build configuration list for PBXNativeTarget "BeaconSharePhone" */;
+			buildPhases = (
+				5C19D270A8559AA72472C9C2 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BeaconSharePhone;
+			packageProductDependencies = (
+			);
+			productName = BeaconSharePhone;
+			productReference = C16E84555F1C6D9204C0DDB2 /* BeaconSharePhone.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		B911E077A1DE948ECAE9D77B /* BeaconPhone2 */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 94017272EDBC2EEAC02F0C4E /* Build configuration list for PBXNativeTarget "BeaconPhone2" */;
@@ -278,6 +332,7 @@
 			);
 			dependencies = (
 				803F591E52240FE4F9735E36 /* PBXTargetDependency */,
+				1EB3DF368B2BCBAEF6877CE3 /* PBXTargetDependency */,
 			);
 			name = BeaconPhone2;
 			packageProductDependencies = (
@@ -333,6 +388,10 @@
 						DevelopmentTeam = YOUR_TEAM_ID;
 						ProvisioningStyle = Manual;
 					};
+					9FA1A10A3C7EEC6F7DFDBB1B = {
+						DevelopmentTeam = YOUR_TEAM_ID;
+						ProvisioningStyle = Automatic;
+					};
 					B911E077A1DE948ECAE9D77B = {
 						DevelopmentTeam = YOUR_TEAM_ID;
 						ProvisioningStyle = Automatic;
@@ -365,6 +424,7 @@
 				B911E077A1DE948ECAE9D77B /* BeaconPhone2 */,
 				BE235BDDB7567851C7635789 /* BeaconWidgetsMac */,
 				FAEE778F067BF4D771434C8B /* BeaconWidgetsPhone */,
+				9FA1A10A3C7EEC6F7DFDBB1B /* BeaconSharePhone */,
 			);
 		};
 /* End PBXProject section */
@@ -398,6 +458,7 @@
 				8B30288D776BD4D7E1251AAF /* ActivityPage.swift in Sources */,
 				7EA691A419B43D2BA2D3FDDE /* BeaconApp.swift in Sources */,
 				6D9E7CD968CFBE52FA760223 /* BeaconHTTP.swift in Sources */,
+				A103ACA0BAA453ED9505F489 /* BeaconShare.swift in Sources */,
 				B4F6AB32BB70DF54CC2F8943 /* Bench.swift in Sources */,
 				555DF74EC665F52DBCA4FEB0 /* BriefsView.swift in Sources */,
 				71EE010BF617CF4AC0C7AD5E /* ContentView.swift in Sources */,
@@ -428,6 +489,16 @@
 				4A4CFFE2A01625C208FEAE6F /* Theme.swift in Sources */,
 				26A2704B1912B6C2EE6EF238 /* WidgetSnapshot.swift in Sources */,
 				CAD4C7D72BDBCA62759A2776 /* WidgetViews.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5C19D270A8559AA72472C9C2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3E37AAABDCACCC3B3A3FA884 /* BeaconShare.swift in Sources */,
+				41F1DEE9FFC6637CC9E8E6B5 /* ShareView.swift in Sources */,
+				D85AD9E41FE77EAD67A9014A /* ShareViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -477,6 +548,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		1EB3DF368B2BCBAEF6877CE3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9FA1A10A3C7EEC6F7DFDBB1B /* BeaconSharePhone */;
+			targetProxy = F3822098D0544C0B4F7CC721 /* PBXContainerItemProxy */;
+		};
 		7944186156060DA26D245001 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = BE235BDDB7567851C7635789 /* BeaconWidgetsMac */;
@@ -569,6 +645,26 @@
 			};
 			name = Release;
 		};
+		A3EC050CD68FE03B71D28131 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				BEACON_DEFAULT_SERVER = "";
+				CODE_SIGN_ENTITLEMENTS = build/BeaconSharePhone.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = "build/Info-share-ios.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.beacon-one.share";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
 		AFE7807B1615640FCC7860B0 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -626,6 +722,26 @@
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		B6C97FC5D88C931DBA8CEF17 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				BEACON_DEFAULT_SERVER = "";
+				CODE_SIGN_ENTITLEMENTS = build/BeaconSharePhone.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = "build/Info-share-ios.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.beacon-one.share";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -778,6 +894,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		50DDE949992B2FA26E24B8F7 /* Build configuration list for PBXNativeTarget "BeaconSharePhone" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A3EC050CD68FE03B71D28131 /* Debug */,
+				B6C97FC5D88C931DBA8CEF17 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		880646F2C181B43B6D369452 /* Build configuration list for PBXProject "Beacon" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

@@ -88,6 +88,20 @@ class MymindImportTests(unittest.TestCase):
         self.assertIsNone(note["created_at"])
         self.assertIsNone(note["saved_at"])
 
+    def test_an_export_never_replaces_a_card_the_mymind_sync_wrote(self):
+        from lib import owner_notes
+        card = {"id": "abc", "title": "Live title", "summary": "drawer joinery", "notes": [], "tags": [],
+                "mainEntity": {"@type": "WebPage"}, "entityType": "WebPage", "created": "2026-11-01T00:00:00Z"}
+        owner_notes.sync_mymind("/cli", db_path=str(self.database), run=lambda command, timeout: json.dumps(card))
+        self.export(["id", "title", "note", "tags"], [["abc", "Old export title", "from the export", "csv-tag"]])
+        mymind.import_export(self.path, self.database)
+        row = self.rows()[0]
+        raw = json.loads(row["raw_json"])
+        self.assertEqual((row["title"], raw["import_format"], raw["listed"]), ("Live title", "mymind-cli-v1", 1))
+        with closing(db.get_connection(self.database)) as conn:
+            self.assertEqual([r[0] for r in conn.execute("SELECT body FROM owner_notes")], ["from the export"],
+                             "the export's note still lands on the card")
+
     def test_invalid_exports_never_open_db(self):
         cases = [
             (["content", "saved"], [["good", ""], ["bad", "yesterday"]]),

@@ -31,8 +31,19 @@ struct BeaconApp: App {
         URLCache.shared = URLCache(memoryCapacity: 96 << 20, diskCapacity: 1 << 30)
         #if os(iOS)
         LibraryPage.mediaBase = BeaconHTTP().base
+        Self.shareSheetSetup()
         #endif
     }
+
+    #if os(iOS)
+    /// The share sheet can't read Settings › Beacon, so the app hands it the server and key, then sends any
+    /// save the share sheet kept while the Mac was out of reach.
+    static func shareSheetSetup() {
+        let base = BeaconHTTP().base
+        BeaconShare.publish(server: base.absoluteString, key: UserDefaults.standard.string(forKey: BeaconHTTP.accessKeyKey))
+        Task { await BeaconShare.flush(base: base) }
+    }
+    #endif
 
     var body: some Scene {
         #if os(macOS)
@@ -139,6 +150,7 @@ struct RootView: View {
                         UserDefaults.standard.set(pair.server.absoluteString, forKey: BeaconHTTP.serverKey)
                         UserDefaults.standard.set(pair.key, forKey: BeaconHTTP.accessKeyKey)
                         LibraryPage.mediaBase = pair.server
+                        BeaconApp.shareSheetSetup()
                         Task { await store.load(); await activity.load() }
                     }
                     pendingPair = nil
